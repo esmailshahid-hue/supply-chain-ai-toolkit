@@ -1,0 +1,43 @@
+shipment_id,origin,destination,carrier,distance_miles,freight_cost,ship_date,promised_delivery_date,actual_delivery_date
+SHP-24119,"Atlanta, GA","Miami, FL",Everline Logistics,662,2022.58,2026-07-06,2026-07-08,2026-07-08
+SHP-24124,"Newark, NJ","Columbus, OH",Rapid LTL Co.,533,2077.62,2026-07-06,2026-07-08,2026-07-08
+SHP-24137,"Houston, TX","Memphis, TN",Rapid LTL Co.,586,1421.43,2026-07-06,2026-07-08,2026-07-08
+SHP-24111,"Los Angeles, CA","Phoenix, AZ",Everline Logistics,372,1004.78,2026-07-10,2026-07-12,2026-07-12
+SHP-24113,"Los Angeles, CA","Phoenix, AZ",Harbor Freight Lines,372,1400.99,2026-07-10,2026-07-12,2026-07-14
+SHP-24123,"Newark, NJ","Columbus, OH",Rapid LTL Co.,533,2107.05,2026-07-18,2026-07-20,2026-07-21
+SHP-24132,"Houston, TX","Memphis, TN",Everline Logistics,586,1442.64,2026-07-18,2026-07-20,2026-07-20
+SHP-24134,"Houston, TX","Memphis, TN",Harbor Freight Lines,586,1238.6,2026-07-18,2026-07-20,2026-07-20
+SHP-24136,"Houston, TX","Memphis, TN",Northstar Transport,586,1226.43,2026-07-18,2026-07-20,2026-07-19
+SHP-24115,"Atlanta, GA","Miami, FL",Northstar Transport,662,1397.79,2026-07-19,2026-07-21,2026-07-21
+SHP-24125,"Newark, NJ","Columbus, OH",Harbor Freight Lines,533,1283.41,2026-07-19,2026-07-21,2026-07-21
+SHP-24103,"Chicago, IL","Dallas, TX",Rapid LTL Co.,925,1718.3,2026-07-20,2026-07-23,2026-07-23
+SHP-24104,"Chicago, IL","Dallas, TX",Harbor Freight Lines,925,1955.19,2026-07-20,2026-07-23,2026-07-24
+SHP-24108,"Los Angeles, CA","Phoenix, AZ",Rapid LTL Co.,372,1009.94,2026-07-21,2026-07-23,2026-07-23
+SHP-24130,"Seattle, WA","Denver, CO",Northstar Transport,1316,2793.25,2026-07-22,2026-07-25,2026-07-25
+SHP-24109,"Los Angeles, CA","Phoenix, AZ",Everline Logistics,372,890.72,2026-07-27,2026-07-29,2026-07-29
+SHP-24114,"Atlanta, GA","Miami, FL",Rapid LTL Co.,662,1478.95,2026-07-28,2026-07-30,2026-08-02
+SHP-24135,"Houston, TX","Memphis, TN",Northstar Transport,586,1387.03,2026-07-28,2026-07-30,2026-07-30
+SHP-24106,"Chicago, IL","Dallas, TX",Everline Logistics,925,1754.24,2026-07-29,2026-08-01,2026-08-02
+SHP-24126,"Newark, NJ","Columbus, OH",Everline Logistics,533,1401.71,2026-07-29,2026-07-31,2026-07-31
+SHP-24118,"Atlanta, GA","Miami, FL",Northstar Transport,662,1564.03,2026-07-30,2026-08-01,2026-08-01
+SHP-24102,"Chicago, IL","Dallas, TX",Harbor Freight Lines,925,1958.09,2026-08-01,2026-08-04,2026-08-05
+SHP-24110,"Los Angeles, CA","Phoenix, AZ",Northstar Transport,372,1000.04,2026-08-01,2026-08-03,2026-08-05
+SHP-24107,"Chicago, IL","Dallas, TX",Harbor Freight Lines,925,2005.43,2026-08-02,2026-08-05,2026-08-05
+SHP-24117,"Atlanta, GA","Miami, FL",Rapid LTL Co.,662,1507.01,2026-08-02,2026-08-04,2026-08-04
+SHP-24140,"Kansas City, MO","Minneapolis, MN",Northstar Transport,440,1012.4,2026-08-03,2026-08-05,2026-08-05
+SHP-24127,"Seattle, WA","Denver, CO",Harbor Freight Lines,1316,2929.08,2026-08-05,2026-08-08,2026-08-08
+SHP-24128,"Seattle, WA","Denver, CO",Harbor Freight Lines,1316,3756.76,2026-08-05,2026-08-08,2026-08-08
+SHP-24116,"Atlanta, GA","Miami, FL",Everline Logistics,662,1566.05,2026-08-06,2026-08-08,2026-08-11
+SHP-24133,"Houston, TX","Memphis, TN",Rapid LTL Co.,586,1438.15,2026-08-06,2026-08-08,2026-08-08
+SHP-24131,"Seattle, WA","Denver, CO",Everline Logistics,1316,2569.55,2026-08-07,2026-08-10,2026-08-09
+SHP-24101,"Chicago, IL","Dallas, TX",Northstar Transport,925,1787.51,2026-08-09,2026-08-12,2026-08-17
+SHP-24120,"Atlanta, GA","Miami, FL",Everline Logistics,662,1435.76,2026-08-09,2026-08-11,2026-08-11
+SHP-24129,"Seattle, WA","Denver, CO",Everline Logistics,1316,4134.25,2026-08-09,2026-08-12,2026-08-12
+SHP-24105,"Chicago, IL","Dallas, TX",Northstar Transport,925,2624.25,2026-08-10,2026-08-13,2026-08-13
+SHP-24122,"Newark, NJ","Columbus, OH",Harbor Freight Lines,533,1346.88,2026-08-10,2026-08-12,2026-08-12
+SHP-24141,"Chicago, IL","Dallas, TX",Rapid LTL Co.,0,1890.0,2026-08-10,2026-08-13,2026-08-14
+SHP-24112,"Los Angeles, CA","Phoenix, AZ",Northstar Transport,372,970.85,2026-08-12,2026-08-14,2026-08-14
+SHP-24142,"Atlanta, GA","Miami, FL",Everline Logistics,662,,2026-08-12,2026-08-14,2026-08-16
+SHP-24121,"Newark, NJ","Columbus, OH",Northstar Transport,533,1254.39,2026-08-14,2026-08-16,2026-08-16
+SHP-24144,"Houston, TX","Memphis, TN",Northstar Transport,n/a,1340.0,2026-08-15,2026-08-17,2026-08-17
+SHP-24143,"Seattle, WA","Denver, CO",Harbor Freight Lines,1316,2610.5,2026-08-18,2026-08-22,

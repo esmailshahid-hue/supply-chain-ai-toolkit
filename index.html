@@ -55,8 +55,10 @@
   nav[role="tablist"] button:hover { color: var(--ink); }
   nav small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 11px; }
 
-  main { padding: 18px 0 40px; }
+  main { padding: 16px 0 40px; }
   [role="tabpanel"][hidden] { display: none; }
+
+  .intro { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; }
 
   /* ---------- Toolbar ---------- */
   .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -145,14 +147,6 @@
   .method ul { margin: 0; padding-left: 18px; color: var(--muted); }
   .method li { margin-bottom: 3px; }
 
-  /* ---------- Coming next ---------- */
-  .coming { border: 1px dashed var(--line); border-radius: var(--radius); padding: 28px; max-width: 640px; }
-  .coming h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
-  .coming p { margin: 0 0 12px; color: var(--muted); }
-  .coming ul { margin: 0; padding-left: 18px; color: var(--muted); }
-  .coming .tag { display: inline-block; font-size: 11.5px; font-weight: 500; color: var(--accent); background: #e9eefb; padding: 2px 8px; border-radius: 10px; margin-bottom: 10px; }
-
-
   /* ---------- Supplier Scorecard ---------- */
   .weights { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 16px; background: var(--panel); }
   .weights .title { font-size: 12.5px; color: var(--muted); margin-right: 4px; }
@@ -180,12 +174,37 @@
   .detail .head h2 { margin: 0; font-size: 15px; font-weight: 600; }
   .detail .head .score { font-family: var(--mono); font-size: 22px; font-weight: 500; }
   .detail .head .close { margin-left: auto; }
+  .detail .scroll { overflow-x: auto; }
   .detail table { font-size: 13px; }
   .detail th { position: static; }
   .detail .bar { display: inline-block; width: 120px; height: 6px; background: var(--panel); border-radius: 3px; vertical-align: middle; margin-right: 8px; overflow: hidden; }
   .detail .bar i { display: block; height: 100%; background: var(--accent); }
   .detail .summary { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
   .detail .summary strong { color: var(--ink); font-weight: 500; }
+
+  /* ---------- Freight Exceptions ---------- */
+  .status.highcost { color: var(--reorder);   background: var(--reorder-bg); }
+  .status.late     { color: var(--overstock); background: var(--overstock-bg); }
+  .status.normal   { color: var(--healthy);   background: var(--healthy-bg); }
+  .dot.highcost { background: var(--reorder); } .dot.late { background: var(--overstock); } .dot.normal { background: var(--healthy); }
+  .strip .highcost { background: var(--reorder); } .strip .late { background: var(--overstock); } .strip .normal { background: var(--healthy); }
+  td .lane { white-space: nowrap; } td .lane .arr { color: var(--muted); margin: 0 4px; }
+  td .pos { color: var(--critical); } td .neg { color: var(--healthy); }
+  .kpi.static { cursor: default; }
+  #f-table { font-size: 13px; } #f-table th, #f-table td { padding: 7px 9px; }
+
+  /* ---------- AI brief (shared) ---------- */
+  .ai-btn[hidden] { display: none; }
+  .brief { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); margin: 14px 0 0; padding: 10px 14px 12px; font-size: 13.5px; }
+  .brief .head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .brief .head strong { font-weight: 600; }
+  .brief .head .meta { color: var(--muted); font-size: 12px; }
+  .brief .head .close { margin-left: auto; }
+  .brief .body { white-space: pre-line; line-height: 1.5; }
+  .brief .body .h { display: block; font-weight: 600; margin-top: 8px; }
+  .brief .body .h:first-child { margin-top: 0; }
+  .brief.error { border-left-color: var(--critical); }
+  .brief.error .body { color: var(--critical); }
 
   /* ---------- Responsive ---------- */
   @media (max-width: 820px) {
@@ -195,6 +214,8 @@
     .method { grid-template-columns: 1fr; }
     .filters .count { margin-left: 0; width: 100%; }
     td.product { max-width: 180px; }
+    .weights { gap: 8px; } .weights input { width: 50px; }
+    .detail .bar { width: 60px; }
   }
   @media (prefers-reduced-motion: no-preference) { .kpi, .btn { transition: background-color .12s; } }
 </style>
@@ -209,7 +230,7 @@
     </div>
     <nav role="tablist" aria-label="Tools">
       <button role="tab" id="tab-inventory" aria-controls="panel-inventory" aria-selected="true">Inventory Planner</button>
-      <button role="tab" id="tab-freight" aria-controls="panel-freight" aria-selected="false">Freight Exceptions <small>Coming next</small></button>
+      <button role="tab" id="tab-freight" aria-controls="panel-freight" aria-selected="false">Freight Exceptions</button>
       <button role="tab" id="tab-supplier" aria-controls="panel-supplier" aria-selected="false">Supplier Scorecard</button>
     </nav>
   </div>
@@ -220,6 +241,8 @@
   <!-- ================= Inventory Planner ================= -->
   <section id="panel-inventory" role="tabpanel" aria-labelledby="tab-inventory">
 
+    <p class="intro">Upload a SKU list to see what to reorder, how much, and what is overstocked.</p>
+
     <div class="toolbar">
       <label class="btn primary" for="file-input">Upload CSV</label>
       <input id="file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
@@ -227,7 +250,8 @@
       <button class="btn link" id="download-sample">Download sample CSV</button>
       <span class="source" id="source"></span>
       <span class="spacer"></span>
-      <button class="btn" id="export">Export results CSV</button>
+      <button class="btn ai-btn" id="ai-inventory" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
+      <button class="btn" id="export" title="Exports the rows currently shown, with all calculated columns">Export results CSV</button>
     </div>
 
     <div class="kpis" id="kpis" aria-label="Summary. Click a status to filter the table.">
@@ -254,6 +278,7 @@
     </div>
     <div class="strip" id="strip" aria-hidden="true"></div>
     <div class="legend" id="legend"></div>
+    <div class="brief" id="brief-inventory" hidden></div>
 
     <div class="filters">
       <input type="search" id="search" placeholder="Search SKU or product" aria-label="Search SKU or product">
@@ -311,7 +336,7 @@
           <ul>
             <li>Expected columns: <span class="num">sku, product_name, current_inventory, open_po_qty, avg_daily_sales, lead_time_days, safety_stock, moq, unit_cost</span>. Header matching is case-insensitive.</li>
             <li>Blank or non-numeric values are treated as 0 and the row is flagged (⚠) so nothing silently changes the result.</li>
-            <li>Zero or missing sales: days of cover shows as “no sales”; lead-time demand is 0, so the reorder point equals safety stock. Any stock on hand with no sales counts as overstock.</li>
+            <li>Zero or missing sales: days of cover shows as “no sales”; lead-time demand is 0, so the reorder point equals safety stock. Stock on hand with no sales counts as overstock; no stock and no sales is healthy.</li>
             <li>MOQ of 0, blank or negative is treated as 1 (no rounding). A suggested order is never below the shortfall.</li>
             <li>Rows without a SKU are skipped. Duplicate SKUs are kept and flagged.</li>
             <li>Negative quantities are clamped to 0 and flagged.</li>
@@ -321,21 +346,124 @@
     </details>
   </section>
 
-  <!-- ================= Coming next ================= -->
+  <!-- ================= Freight Exceptions ================= -->
   <section id="panel-freight" role="tabpanel" aria-labelledby="tab-freight" hidden>
-    <div class="coming">
-      <span class="tag">Coming next</span>
-      <h2>Freight Exceptions</h2>
-      <p>Upload a shipment file and surface late, at-risk and cost-variance shipments by lane and carrier.</p>
-      <ul>
-        <li>Planned vs actual transit, on-time % by carrier</li>
-        <li>Cost-per-unit variance against rate card</li>
-        <li>Exception list ready to send to the carrier</li>
-      </ul>
+
+    <p class="intro">Upload a shipment log to find deliveries that were late or cost well above the lane norm, ranked by money at stake.</p>
+
+    <div class="toolbar">
+      <label class="btn primary" for="f-file-input">Upload CSV</label>
+      <input id="f-file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
+      <button class="btn" id="f-load-sample">Load sample data</button>
+      <button class="btn link" id="f-download-sample">Download sample CSV</button>
+      <span class="source" id="f-source"></span>
+      <span class="spacer"></span>
+      <button class="btn ai-btn" id="ai-freight" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
+      <button class="btn" id="f-export" title="Exports the rows currently shown, with all calculated columns">Export exceptions CSV</button>
     </div>
+
+    <div class="kpis" aria-label="Summary. Click a status to filter the table.">
+      <button class="kpi f-kpi" data-status="" aria-pressed="true">
+        <span class="label">Shipments</span>
+        <span class="value" id="f-total">0</span>
+        <span class="sub" id="f-total-sub">&nbsp;</span>
+      </button>
+      <button class="kpi f-kpi" data-status="flagged" aria-pressed="false">
+        <span class="label"><i class="dot highcost"></i>Flagged</span>
+        <span class="value" id="f-flagged">0</span>
+        <span class="sub" id="f-flagged-sub">High cost, late or both</span>
+      </button>
+      <button class="kpi f-kpi" data-status="Critical" aria-pressed="false">
+        <span class="label"><i class="dot critical"></i>Critical</span>
+        <span class="value" id="f-critical">0</span>
+        <span class="sub">High cost and late</span>
+      </button>
+      <button class="kpi f-kpi static" data-status="" aria-pressed="false" id="f-kpi-excess" tabindex="-1">
+        <span class="label">Estimated excess spend</span>
+        <span class="value" id="f-excess">$0</span>
+        <span class="sub" id="f-excess-sub">Above lane average cost per mile</span>
+      </button>
+    </div>
+    <div class="strip" id="f-strip" aria-hidden="true"></div>
+    <div class="legend" id="f-legend"></div>
+    <div class="brief" id="brief-freight" hidden></div>
+
+    <div class="filters">
+      <input type="search" id="f-search" placeholder="Search shipment ID" aria-label="Search shipment ID">
+      <select id="f-status-filter" aria-label="Filter by status">
+        <option value="">All statuses</option>
+        <option value="flagged">Flagged only</option>
+        <option>Critical</option>
+        <option>High Cost</option>
+        <option>Late</option>
+        <option>Normal</option>
+      </select>
+      <select id="f-carrier-filter" aria-label="Filter by carrier"><option value="">All carriers</option></select>
+      <select id="f-lane-filter" aria-label="Filter by lane"><option value="">All lanes</option></select>
+      <span class="count" id="f-count"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="f-table">
+        <thead>
+          <tr>
+            <th data-key="shipment_id"><button>Shipment <span class="arrow">▲</span></button></th>
+            <th data-key="lane"><button>Lane <span class="arrow">▲</span></button></th>
+            <th data-key="carrier"><button>Carrier <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="freight_cost"><button>Cost <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="cpm"><button>Cost/mile <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="lane_avg"><button>Lane avg <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="variance"><button>Variance <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="late_days"><button>Late days <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="excess"><button>Excess cost <span class="arrow">▲</span></button></th>
+            <th data-key="status"><button>Status <span class="arrow">▲</span></button></th>
+          </tr>
+        </thead>
+        <tbody id="f-tbody"></tbody>
+        <tfoot><tr><td colspan="10" id="f-tfoot"></td></tr></tfoot>
+      </table>
+    </div>
+    <p class="notice" id="f-notice"></p>
+
+    <details>
+      <summary>How exceptions are identified</summary>
+      <div class="method">
+        <div>
+          <h3>Formulas</h3>
+          <dl>
+            <dt>Lane</dt><dd>origin → destination</dd>
+            <dt>Cost per mile</dt><dd>freight_cost ÷ distance_miles</dd>
+            <dt>Lane average</dt><dd>mean cost per mile of all shipments on the lane</dd>
+            <dt>Variance</dt><dd>cost per mile ÷ lane average − 1</dd>
+            <dt>Late days</dt><dd>actual_delivery_date − promised_delivery_date</dd>
+            <dt>Excess cost</dt><dd>max((cost per mile − lane average) × distance_miles, 0)</dd>
+          </dl>
+          <h3 style="margin-top:12px">Status (checked in order)</h3>
+          <dl>
+            <dt>Critical</dt><dd>high cost and late</dd>
+            <dt>High Cost</dt><dd>variance &gt; +30%</dd>
+            <dt>Late</dt><dd>actual delivery after promised</dd>
+            <dt>Normal</dt><dd>everything else</dd>
+          </dl>
+          <p style="margin:8px 0 0;font-size:12.5px;color:var(--muted)">The table ranks by excess cost, then late days, so the most expensive exceptions are at the top. Excess cost is an estimate of what the shipment would have saved at the lane's average rate; it is not a claim against the carrier.</p>
+        </div>
+        <div>
+          <h3>Data handling</h3>
+          <ul>
+            <li>Expected columns: <span class="num">shipment_id, origin, destination, carrier, distance_miles, freight_cost, ship_date, promised_delivery_date, actual_delivery_date</span>. Header matching is case-insensitive. Dates should be YYYY-MM-DD; other common formats are accepted where unambiguous.</li>
+            <li>Zero, blank or invalid mileage, or a zero/blank/invalid cost: cost per mile can't be calculated, the shipment is left out of the lane average and can't be flagged High Cost. It can still be flagged Late. The row is marked ⚠.</li>
+            <li>A missing or invalid promised or actual date: late days are unknown (shown as —) and the shipment is not flagged Late. Blank actual date usually means not yet delivered.</li>
+            <li>A lane with only one measurable shipment is its own benchmark: variance 0, no excess cost, flagged “no benchmark”.</li>
+            <li>Rows without a shipment ID are skipped. Duplicate IDs are kept and flagged. Negative costs or mileage are treated as invalid.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
   </section>
 
   <section id="panel-supplier" role="tabpanel" aria-labelledby="tab-supplier" hidden>
+
+    <p class="intro">Upload supplier metrics to rank suppliers on delivery, quality, cost and service with weights you control.</p>
 
     <div class="toolbar">
       <label class="btn primary" for="s-file-input">Upload CSV</label>
@@ -344,7 +472,8 @@
       <button class="btn link" id="s-download-sample">Download sample CSV</button>
       <span class="source" id="s-source"></span>
       <span class="spacer"></span>
-      <button class="btn" id="s-export">Export scorecard CSV</button>
+      <button class="btn ai-btn" id="ai-supplier" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
+      <button class="btn" id="s-export" title="Exports the rows currently shown, with all calculated columns">Export scorecard CSV</button>
     </div>
 
     <div class="weights" id="weights">
@@ -381,11 +510,13 @@
     </div>
     <div class="strip" id="s-strip" aria-hidden="true"></div>
     <div class="legend" id="s-legend"></div>
+    <div class="brief" id="brief-supplier" hidden></div>
 
     <div class="filters">
       <input type="search" id="s-search" placeholder="Search supplier" aria-label="Search supplier">
       <select id="s-rating-filter" aria-label="Filter by rating">
         <option value="">All ratings</option>
+        <option value="attention">Requiring attention</option>
         <option>Preferred</option>
         <option>Acceptable</option>
         <option>Watch</option>
@@ -508,13 +639,16 @@ const REQUIRED = ['sku','product_name','current_inventory','open_po_qty','avg_da
 function parseCSV(text) {
   const rows = []; let row = [], field = '', inQuotes = false;
   text = text.replace(/^\uFEFF/, '');
+  // Delimiter: comma unless the header line has none and uses ; or tab instead
+  const firstLine = text.split(/\r?\n/, 1)[0] || '';
+  const delim = firstLine.includes(',') ? ',' : firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ',';
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (inQuotes) {
       if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
       else field += c;
     } else if (c === '"') inQuotes = true;
-    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === delim) { row.push(field); field = ''; }
     else if (c === '\n' || c === '\r') {
       if (c === '\r' && text[i + 1] === '\n') i++;
       row.push(field); rows.push(row); row = []; field = '';
@@ -554,10 +688,12 @@ function computeRow(rec) {
   const lead_time_days    = take('lead_time_days');
   const safety_stock      = take('safety_stock');
   const unit_cost         = take('unit_cost');
-  let   moq               = take('moq');
-  if (moq < 1) { moq = 1; if (String(rec.moq ?? '').trim() !== '') flags.push('moq < 1 → 1'); }
+  const moqRaw = num(rec.moq, 'moq');
+  let moq = moqRaw.value;
+  if (moq < 1) { moq = 1; flags.push(moqRaw.flag ? moqRaw.flag.replace(/→ 0$/, '→ 1') : 'moq < 1 → 1'); }
 
-  const days_of_cover      = avg_daily_sales > 0 ? current_inventory / avg_daily_sales : Infinity;
+  // No sales: stock on hand never runs down (infinite cover); no stock and no sales is simply 0.
+  const days_of_cover      = avg_daily_sales > 0 ? current_inventory / avg_daily_sales : (current_inventory > 0 ? Infinity : 0);
   const lead_time_demand   = avg_daily_sales * lead_time_days;
   const reorder_point      = lead_time_demand + safety_stock;
   const inventory_position = current_inventory + open_po_qty;
@@ -612,7 +748,8 @@ function visibleRows() {
     let av = a[k], bv = b[k];
     if (k === 'status') { av = STATUS_ORDER[av]; bv = STATUS_ORDER[bv]; }
     const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
-    return (cmp || a.sku.localeCompare(b.sku)) * dir;
+    // Ties: biggest order value first, so the costliest action is always at the top of its group
+    return (cmp * dir) || (b.order_value - a.order_value) || a.sku.localeCompare(b.sku);
   });
   return rows;
 }
@@ -631,7 +768,7 @@ function renderKPIs() {
 
   $('strip').innerHTML = STATUSES.map(s => `<div class="${s.toLowerCase()}" style="flex:${counts[s]}"></div>`).join('');
   $('legend').innerHTML = STATUSES.map(s =>
-    `<span><i class="dot ${s.toLowerCase()}"></i>${s} ${total ? Math.round(counts[s] / total * 100) : 0}%</span>`).join('');
+    `<span><i class="dot ${s.toLowerCase()}"></i>${s} ${counts[s]}</span>`).join('');
   document.querySelectorAll('.kpi').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.status === state.status)));
 }
 
@@ -696,6 +833,61 @@ function download(name, text) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+/* ---------- AI brief (shared by all tools) ----------
+   The model receives ONLY numbers this page already calculated and writes a ≤150-word summary.
+   The endpoint (api/brief.js) holds the API key. If it is absent or unconfigured, the buttons stay hidden. */
+const AI = {
+  endpoint: 'api/brief',
+  enabled: false,
+  async probe() {
+    if (!/^https?:$/.test(location.protocol)) return; // opened as a file: no server, keep the buttons hidden
+    try { const r = await fetch(this.endpoint, { method: 'GET' }); this.enabled = r.ok && (await r.json()).enabled === true; }
+    catch { this.enabled = false; }
+    document.querySelectorAll('.ai-btn').forEach(b => b.hidden = !this.enabled);
+  },
+  wire(tool, buildPayload) {
+    const btn = $(`ai-${tool}`), box = $(`brief-${tool}`);
+    const render = (cls, body, meta) => {
+      box.className = 'brief' + (cls ? ' ' + cls : ''); box.hidden = false;
+      box.innerHTML = `<div class="head"><strong>AI brief</strong><span class="meta">${meta}</span><button class="btn link close">Close</button></div><div class="body">${body}</div>`;
+      box.querySelector('.close').addEventListener('click', () => { box.hidden = true; box.innerHTML = ''; });
+    };
+    btn.addEventListener('click', async () => {
+      const data = buildPayload();
+      if (!data) { render('error', 'Load some data first.', ''); return; }
+      const scope = data._scope; delete data._scope;
+      btn.disabled = true; btn.textContent = 'Generating…';
+      try {
+        const r = await fetch(this.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool, data }) });
+        const out = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(out.error || `Request failed (${r.status})`);
+        const html = esc(out.brief).replace(/^\s*(Top 3 issues|Why they matter|Recommended actions)\s*:?\s*\n/gim, '<span class="h">$1</span>');
+        render('', html, `Written from the calculated results shown on this page · ${scope}`);
+      } catch (e) {
+        render('error', esc(e.message), '');
+      } finally { btn.disabled = false; btn.textContent = 'Generate AI Brief'; }
+    });
+  },
+};
+AI.probe();
+
+// Inventory payload: counts plus the SKUs that need action, already computed above.
+AI.wire('inventory', () => {
+  if (!state.rows.length) return null;
+  const rows = state.rows, by = st => rows.filter(r => r.status === st);
+  const money = n => Math.round(n);
+  const item = r => ({ sku: r.sku, product: r.product_name, status: r.status, inventory_position: r.inventory_position, reorder_point: money(r.reorder_point),
+                       days_of_cover: r.days_of_cover === Infinity ? 'no sales' : +r.days_of_cover.toFixed(1), suggested_order: r.suggested_order, order_value_usd: money(r.order_value) });
+  const needOrder = rows.filter(r => r.suggested_order > 0).sort((a, b) => b.order_value - a.order_value);
+  return {
+    _scope: `${rows.length} SKUs`,
+    summary: { total_skus: rows.length, critical: by('Critical').length, reorder: by('Reorder').length, overstock: by('Overstock').length, healthy: by('Healthy').length,
+               skus_needing_order: needOrder.length, total_suggested_order_value_usd: money(needOrder.reduce((s, r) => s + r.order_value, 0)) },
+    critical_and_reorder_by_order_value: needOrder.slice(0, 12).map(item),
+    overstock_by_stock_value: by('Overstock').map(r => ({ ...item(r), stock_value_usd: money(r.current_inventory * r.unit_cost) })).sort((a, b) => b.stock_value_usd - a.stock_value_usd).slice(0, 6),
+  };
+});
+
 /* ---------- 5. Events ---------- */
 $('file-input').addEventListener('change', e => {
   const file = e.target.files[0]; if (!file) return;
@@ -737,9 +929,15 @@ document.querySelectorAll('th[data-key]').forEach(th => th.querySelector('button
 
 // Tabs
 const tabs = [...document.querySelectorAll('[role="tab"]')];
-tabs.forEach(tab => tab.addEventListener('click', () => {
-  tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', String(on)); $(t.getAttribute('aria-controls')).hidden = !on; });
-}));
+const showTab = tab => tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', String(on)); $(t.getAttribute('aria-controls')).hidden = !on; });
+tabs.forEach((tab, i) => {
+  tab.addEventListener('click', () => showTab(tab));
+  tab.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    next.focus(); showTab(next);
+  });
+});
 
 // Start with the sample so the demo works immediately.
 load(SAMPLE_CSV, 'sample-inventory.csv');
@@ -790,22 +988,24 @@ const RATING_ORDER = { Preferred: 0, Acceptable: 1, Watch: 2, Critical: 3 };
 const clamp = x => Math.max(0, Math.min(100, x));
 const rate = s => s >= 85 ? 'Preferred' : s >= 70 ? 'Acceptable' : s >= 55 ? 'Watch' : 'Critical';
 
-// Signed number: price variance may legitimately be negative (favorable).
-function signedNum(raw, field) {
+// Accepts "96.5%", "$1,200" etc. Price variance may legitimately be negative (favorable); other fields are clamped at 0.
+function metric(raw, field, signed) {
   const s = String(raw ?? '').replace(/[,$\s%]/g, '');
   if (s === '') return { value: 0, flag: `${field} blank → 0` };
   const n = Number(s);
   if (!Number.isFinite(n)) return { value: 0, flag: `${field} "${raw}" → 0` };
+  if (n < 0 && !signed) return { value: 0, flag: `${field} negative → 0` };
   return { value: n, flag: null };
 }
 
 function scoreRow(rec, weights) {
   const flags = [];
-  const take = (f, signed) => { const r = (signed ? signedNum : num)(rec[f], f); if (r.flag) flags.push(r.flag); return r.value; };
+  const take = (f, signed) => { const r = metric(rec[f], f, signed); if (r.flag) flags.push(r.flag); return r.value; };
   const row = { supplier: rec.supplier, annual_spend: take('annual_spend'), inputs: {}, flags };
   let overall = 0;
   for (const d of DIMS) {
     const v = take(d.input, d.key === 'cost');
+    if (d.key === 'delivery' && v > 100) flags.push(`otif_percent ${v} → capped at 100`);
     row.inputs[d.key] = v;
     row[d.key] = clamp(d.score(v));
     overall += row[d.key] * weights[d.key] / 100;
@@ -837,11 +1037,12 @@ function readWeights() {
   const w = {};
   document.querySelectorAll('#weights input').forEach(i => w[i.dataset.w] = Math.max(0, Number(i.value) || 0));
   const total = Object.values(w).reduce((a, b) => a + b, 0);
+  const ok = Math.abs(total - 100) < 0.001;
   const el = $('w-total');
-  el.textContent = `Total ${total}%`;
-  el.className = 'total' + (total === 100 ? '' : ' bad');
-  el.title = total === 100 ? '' : 'Weights must add up to 100%';
-  return total === 100 ? w : null;
+  el.textContent = `Total ${Math.round(total * 10) / 10}%`;
+  el.className = 'total' + (ok ? '' : ' bad');
+  el.title = ok ? '' : 'Weights must add up to 100%';
+  return ok ? w : null;
 }
 
 function recompute() {
@@ -938,7 +1139,7 @@ function renderDetail() {
       <span style="color:var(--muted);font-size:12.5px">Rank ${r.rank} of ${state.rows.length} · ${fmtMoney(r.annual_spend)} annual spend</span>
       <button class="btn link close" id="s-detail-close">Close</button>
     </div>
-    <table>
+    <div class="scroll"><table>
       <thead><tr><th>Dimension</th><th>Input</th><th class="r">Score</th><th class="r">Weight</th><th class="r">Points</th><th>Points lost</th></tr></thead>
       <tbody>${parts.map(p => `
         <tr>
@@ -951,7 +1152,7 @@ function renderDetail() {
         </tr>`).join('')}
       </tbody>
       <tfoot><tr><td colspan="4">Overall score</td><td class="r num" style="color:var(--ink)"><strong>${fmtScore(r.overall)}</strong></td><td class="num">${fmtScore(100 - r.overall)}</td></tr></tfoot>
-    </table>
+    </table></div>
     <div class="summary">
       ${worst.lost > 0.05
         ? `<strong>${worst.label}</strong> is the biggest drag, costing ${fmtScore(worst.lost)} points (${fmtInput(worst)} → score ${fmtScore(worst.score)} at ${worst.weight}% weight). `
@@ -1016,7 +1217,7 @@ document.querySelectorAll('.s-kpi').forEach(b => b.addEventListener('click', () 
   if (b.id === 's-kpi-avg') return;
   if (b.id === 's-kpi-top') { if (state.rows[0]) { state.selected = state.rows[0].supplier; renderTable(); renderDetail(); $('s-detail').scrollIntoView({ block: 'nearest' }); } return; }
   state.rating = b.dataset.rating === state.rating ? '' : b.dataset.rating;
-  $('s-rating-filter').value = state.rating === 'attention' ? '' : state.rating;
+  $('s-rating-filter').value = state.rating;
   renderKPIs(); renderTable();
 }));
 document.querySelectorAll('#s-table th[data-key]').forEach(th => th.querySelector('button').addEventListener('click', () => {
@@ -1029,7 +1230,322 @@ const selectRow = tr => { state.selected = tr.dataset.supplier === state.selecte
 $('s-tbody').addEventListener('click', e => { const tr = e.target.closest('tr.selectable'); if (tr) selectRow(tr); });
 $('s-tbody').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const tr = e.target.closest('tr.selectable'); if (tr) { e.preventDefault(); selectRow(tr); } } });
 
+AI.wire('supplier', () => {
+  if (!state.rows.length) return null;
+  const rows = state.rows, w = state.weights;
+  const one = n => +n.toFixed(1);
+  const weakest = r => DIMS.map(d => ({ label: d.label, lost: (100 - r[d.key]) * w[d.key] / 100 })).sort((a, b) => b.lost - a.lost)[0];
+  const item = r => ({ rank: r.rank, supplier: r.supplier, annual_spend_usd: Math.round(r.annual_spend), overall: one(r.overall), rating: r.rating,
+                       delivery: one(r.delivery), quality: one(r.quality), cost: one(r.cost), service: one(r.service),
+                       biggest_drag: `${weakest(r).label} (${one(weakest(r).lost)} points lost)` });
+  const spend = rows.reduce((s, r) => s + r.annual_spend, 0);
+  return {
+    _scope: `${rows.length} suppliers`,
+    weights_percent: w,
+    summary: { suppliers: rows.length, total_annual_spend_usd: Math.round(spend), average_score: one(rows.reduce((s, r) => s + r.overall, 0) / rows.length),
+               preferred: rows.filter(r => r.rating === 'Preferred').length, acceptable: rows.filter(r => r.rating === 'Acceptable').length,
+               watch: rows.filter(r => r.rating === 'Watch').length, critical: rows.filter(r => r.rating === 'Critical').length },
+    requiring_attention_by_spend: rows.filter(r => r.rating === 'Watch' || r.rating === 'Critical').sort((a, b) => b.annual_spend - a.annual_spend).slice(0, 10).map(item),
+    top_rated: rows.slice(0, 3).map(item),
+  };
+});
+
 load(SAMPLE_SUPPLIERS_CSV, 'sample-suppliers.csv');
+})();
+</script>
+<script>
+/* =====================================================================
+   Freight Exceptions — same structure as the other tools:
+     1. Sample data   2. Calculations   3. State + rendering   4. Events
+   ===================================================================== */
+(function () {
+
+/* ---------- 1. Sample data ---------- */
+const SAMPLE_SHIPMENTS_CSV = `shipment_id,origin,destination,carrier,distance_miles,freight_cost,ship_date,promised_delivery_date,actual_delivery_date
+SHP-24119,"Atlanta, GA","Miami, FL",Everline Logistics,662,2022.58,2026-07-06,2026-07-08,2026-07-08
+SHP-24124,"Newark, NJ","Columbus, OH",Rapid LTL Co.,533,2077.62,2026-07-06,2026-07-08,2026-07-08
+SHP-24137,"Houston, TX","Memphis, TN",Rapid LTL Co.,586,1421.43,2026-07-06,2026-07-08,2026-07-08
+SHP-24111,"Los Angeles, CA","Phoenix, AZ",Everline Logistics,372,1004.78,2026-07-10,2026-07-12,2026-07-12
+SHP-24113,"Los Angeles, CA","Phoenix, AZ",Harbor Freight Lines,372,1400.99,2026-07-10,2026-07-12,2026-07-14
+SHP-24123,"Newark, NJ","Columbus, OH",Rapid LTL Co.,533,2107.05,2026-07-18,2026-07-20,2026-07-21
+SHP-24132,"Houston, TX","Memphis, TN",Everline Logistics,586,1442.64,2026-07-18,2026-07-20,2026-07-20
+SHP-24134,"Houston, TX","Memphis, TN",Harbor Freight Lines,586,1238.6,2026-07-18,2026-07-20,2026-07-20
+SHP-24136,"Houston, TX","Memphis, TN",Northstar Transport,586,1226.43,2026-07-18,2026-07-20,2026-07-19
+SHP-24115,"Atlanta, GA","Miami, FL",Northstar Transport,662,1397.79,2026-07-19,2026-07-21,2026-07-21
+SHP-24125,"Newark, NJ","Columbus, OH",Harbor Freight Lines,533,1283.41,2026-07-19,2026-07-21,2026-07-21
+SHP-24103,"Chicago, IL","Dallas, TX",Rapid LTL Co.,925,1718.3,2026-07-20,2026-07-23,2026-07-23
+SHP-24104,"Chicago, IL","Dallas, TX",Harbor Freight Lines,925,1955.19,2026-07-20,2026-07-23,2026-07-24
+SHP-24108,"Los Angeles, CA","Phoenix, AZ",Rapid LTL Co.,372,1009.94,2026-07-21,2026-07-23,2026-07-23
+SHP-24130,"Seattle, WA","Denver, CO",Northstar Transport,1316,2793.25,2026-07-22,2026-07-25,2026-07-25
+SHP-24109,"Los Angeles, CA","Phoenix, AZ",Everline Logistics,372,890.72,2026-07-27,2026-07-29,2026-07-29
+SHP-24114,"Atlanta, GA","Miami, FL",Rapid LTL Co.,662,1478.95,2026-07-28,2026-07-30,2026-08-02
+SHP-24135,"Houston, TX","Memphis, TN",Northstar Transport,586,1387.03,2026-07-28,2026-07-30,2026-07-30
+SHP-24106,"Chicago, IL","Dallas, TX",Everline Logistics,925,1754.24,2026-07-29,2026-08-01,2026-08-02
+SHP-24126,"Newark, NJ","Columbus, OH",Everline Logistics,533,1401.71,2026-07-29,2026-07-31,2026-07-31
+SHP-24118,"Atlanta, GA","Miami, FL",Northstar Transport,662,1564.03,2026-07-30,2026-08-01,2026-08-01
+SHP-24102,"Chicago, IL","Dallas, TX",Harbor Freight Lines,925,1958.09,2026-08-01,2026-08-04,2026-08-05
+SHP-24110,"Los Angeles, CA","Phoenix, AZ",Northstar Transport,372,1000.04,2026-08-01,2026-08-03,2026-08-05
+SHP-24107,"Chicago, IL","Dallas, TX",Harbor Freight Lines,925,2005.43,2026-08-02,2026-08-05,2026-08-05
+SHP-24117,"Atlanta, GA","Miami, FL",Rapid LTL Co.,662,1507.01,2026-08-02,2026-08-04,2026-08-04
+SHP-24140,"Kansas City, MO","Minneapolis, MN",Northstar Transport,440,1012.4,2026-08-03,2026-08-05,2026-08-05
+SHP-24127,"Seattle, WA","Denver, CO",Harbor Freight Lines,1316,2929.08,2026-08-05,2026-08-08,2026-08-08
+SHP-24128,"Seattle, WA","Denver, CO",Harbor Freight Lines,1316,3756.76,2026-08-05,2026-08-08,2026-08-08
+SHP-24116,"Atlanta, GA","Miami, FL",Everline Logistics,662,1566.05,2026-08-06,2026-08-08,2026-08-11
+SHP-24133,"Houston, TX","Memphis, TN",Rapid LTL Co.,586,1438.15,2026-08-06,2026-08-08,2026-08-08
+SHP-24131,"Seattle, WA","Denver, CO",Everline Logistics,1316,2569.55,2026-08-07,2026-08-10,2026-08-09
+SHP-24101,"Chicago, IL","Dallas, TX",Northstar Transport,925,1787.51,2026-08-09,2026-08-12,2026-08-17
+SHP-24120,"Atlanta, GA","Miami, FL",Everline Logistics,662,1435.76,2026-08-09,2026-08-11,2026-08-11
+SHP-24129,"Seattle, WA","Denver, CO",Everline Logistics,1316,4134.25,2026-08-09,2026-08-12,2026-08-12
+SHP-24105,"Chicago, IL","Dallas, TX",Northstar Transport,925,2624.25,2026-08-10,2026-08-13,2026-08-13
+SHP-24122,"Newark, NJ","Columbus, OH",Harbor Freight Lines,533,1346.88,2026-08-10,2026-08-12,2026-08-12
+SHP-24141,"Chicago, IL","Dallas, TX",Rapid LTL Co.,0,1890.0,2026-08-10,2026-08-13,2026-08-14
+SHP-24112,"Los Angeles, CA","Phoenix, AZ",Northstar Transport,372,970.85,2026-08-12,2026-08-14,2026-08-14
+SHP-24142,"Atlanta, GA","Miami, FL",Everline Logistics,662,,2026-08-12,2026-08-14,2026-08-16
+SHP-24121,"Newark, NJ","Columbus, OH",Northstar Transport,533,1254.39,2026-08-14,2026-08-16,2026-08-16
+SHP-24144,"Houston, TX","Memphis, TN",Northstar Transport,n/a,1340.0,2026-08-15,2026-08-17,2026-08-17
+SHP-24143,"Seattle, WA","Denver, CO",Harbor Freight Lines,1316,2610.5,2026-08-18,2026-08-22,
+`;
+const REQUIRED = ['shipment_id','origin','destination','carrier','distance_miles','freight_cost','ship_date','promised_delivery_date','actual_delivery_date'];
+const STATUSES = ['Critical', 'High Cost', 'Late', 'Normal'];
+const STATUS_ORDER = { 'Critical': 0, 'High Cost': 1, 'Late': 2, 'Normal': 3 };
+const cls = s => s.toLowerCase().replace(' ', '');
+const HIGH_COST_THRESHOLD = 0.30;
+
+/* ---------- 2. Calculations ---------- */
+// Positive number or null. Blank, non-numeric, zero (for miles) or negative all come back null with a reason.
+function posNum(raw, field, allowZero) {
+  const s = String(raw ?? '').replace(/[,$\s]/g, '');
+  if (s === '') return { value: null, flag: `${field} blank` };
+  const n = Number(s);
+  if (!Number.isFinite(n)) return { value: null, flag: `${field} "${raw}" invalid` };
+  if (n < 0) return { value: null, flag: `${field} negative` };
+  if (n === 0 && !allowZero) return { value: null, flag: `${field} is 0` };
+  return { value: n, flag: null };
+}
+
+// Returns a UTC day number or null. Accepts YYYY-MM-DD, and falls back to Date.parse for other formats.
+function parseDay(raw, field) {
+  const s = String(raw ?? '').trim();
+  if (s === '') return { value: null, flag: `${field} blank` };
+  let t;
+  const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) t = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  else { const d = new Date(s); t = isNaN(d) ? NaN : Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); }
+  if (!Number.isFinite(t)) return { value: null, flag: `${field} "${raw}" invalid` };
+  return { value: Math.round(t / 86400000), flag: null };
+}
+
+function buildRows(records) {
+  const rows = []; let skipped = 0; const seen = new Set();
+  for (const rec of records) {
+    if (!rec.shipment_id) { skipped++; continue; }
+    const flags = [];
+    const take = (fn, ...a) => { const r = fn(...a); if (r.flag) flags.push(r.flag); return r.value; };
+    const miles = take(posNum, rec.distance_miles, 'distance_miles', false);
+    const cost  = take(posNum, rec.freight_cost, 'freight_cost', false);
+    const promised = take(parseDay, rec.promised_delivery_date, 'promised_delivery_date');
+    const actual   = take(parseDay, rec.actual_delivery_date, 'actual_delivery_date');
+    if (String(rec.ship_date ?? '').trim() !== '') take(parseDay, rec.ship_date, 'ship_date');
+    if (!rec.origin) flags.push('origin blank'); if (!rec.destination) flags.push('destination blank');
+    const row = {
+      shipment_id: rec.shipment_id, origin: rec.origin || '', destination: rec.destination || '',
+      lane: `${rec.origin || '?'} → ${rec.destination || '?'}`, carrier: rec.carrier || '(unknown)',
+      distance_miles: miles, freight_cost: cost,
+      ship_date: rec.ship_date || '', promised_delivery_date: rec.promised_delivery_date || '', actual_delivery_date: rec.actual_delivery_date || '',
+      cpm: miles !== null && cost !== null ? cost / miles : null,
+      late_days: promised !== null && actual !== null ? actual - promised : null,
+      flags,
+    };
+    if (seen.has(row.shipment_id)) flags.push('duplicate shipment_id'); else seen.add(row.shipment_id);
+    rows.push(row);
+  }
+  // Lane averages from shipments with a measurable cost per mile
+  const lanes = {};
+  for (const r of rows) if (r.cpm !== null) (lanes[r.lane] ??= []).push(r.cpm);
+  for (const r of rows) {
+    const l = lanes[r.lane] || [];
+    r.lane_count = l.length;
+    r.lane_avg = l.length ? l.reduce((a, b) => a + b, 0) / l.length : null;
+    if (r.cpm !== null && l.length === 1) r.flags.push('only shipment on lane — no benchmark');
+    r.variance = r.cpm !== null && r.lane_avg ? r.cpm / r.lane_avg - 1 : null;
+    r.excess = r.variance !== null ? Math.max((r.cpm - r.lane_avg) * r.distance_miles, 0) : 0;
+    const highCost = r.variance !== null && r.variance > HIGH_COST_THRESHOLD;
+    const late = r.late_days !== null && r.late_days > 0;
+    r.status = highCost && late ? 'Critical' : highCost ? 'High Cost' : late ? 'Late' : 'Normal';
+  }
+  return { rows, skipped };
+}
+
+/* ---------- 3. State + rendering ---------- */
+const state = { rows: [], skipped: 0, sourceName: '', search: '', status: '', carrier: '', lane: '', sortKey: 'excess', sortDir: 'desc' };
+const fmtCpm = n => n === null ? '—' : '$' + n.toFixed(2);
+const fmtPct = n => { if (n === null) return '—'; const v = Math.round(n * 100); return (v > 0 ? '+' : '') + v + '%'; };
+const fmtMoney2 = n => n === null ? '—' : n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const isFlagged = r => r.status !== 'Normal';
+
+function visibleRows() {
+  const q = state.search.trim().toLowerCase();
+  const rows = state.rows.filter(r =>
+    (!state.status || (state.status === 'flagged' ? isFlagged(r) : r.status === state.status)) &&
+    (!state.carrier || r.carrier === state.carrier) &&
+    (!state.lane || r.lane === state.lane) &&
+    (!q || r.shipment_id.toLowerCase().includes(q)));
+  const k = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
+  const val = r => k === 'status' ? STATUS_ORDER[r.status] : r[k];
+  rows.sort((a, b) => {
+    let av = val(a), bv = val(b);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1; if (bv === null) return -1;   // unknowns always sink to the bottom
+    const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+    // Secondary: excess desc, then late days desc — financial impact first
+    return (cmp * dir) || (b.excess - a.excess) || ((b.late_days ?? -Infinity) - (a.late_days ?? -Infinity)) || a.shipment_id.localeCompare(b.shipment_id);
+  });
+  return rows;
+}
+
+function fillSelect(id, values, label) {
+  const sel = $(id), cur = sel.value;
+  sel.innerHTML = `<option value="">${label}</option>` + values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  sel.value = values.includes(cur) ? cur : '';
+}
+
+function renderKPIs() {
+  const rows = state.rows, total = rows.length;
+  const counts = Object.fromEntries(STATUSES.map(s => [s, 0]));
+  rows.forEach(r => counts[r.status]++);
+  const flagged = total - counts.Normal;
+  const spend = rows.reduce((s, r) => s + (r.freight_cost ?? 0), 0);
+  const excess = rows.reduce((s, r) => s + r.excess, 0);
+  const lanes = new Set(rows.map(r => r.lane)).size, carriers = new Set(rows.map(r => r.carrier)).size;
+  $('f-total').textContent = fmtInt(total);
+  $('f-total-sub').textContent = total ? `${fmtMoney(spend)} freight · ${lanes} lane${lanes === 1 ? '' : 's'} · ${carriers} carrier${carriers === 1 ? '' : 's'}` : 'Load a CSV to begin';
+  $('f-flagged').textContent = fmtInt(flagged);
+  $('f-flagged-sub').textContent = total ? `${Math.round(flagged / total * 100)}% of shipments` : 'High cost, late or both';
+  $('f-critical').textContent = fmtInt(counts.Critical);
+  $('f-excess').textContent = fmtMoney(excess);
+  $('f-excess-sub').textContent = spend ? `${(excess / spend * 100).toFixed(1)}% of freight spend` : 'Above lane average cost per mile';
+  $('f-strip').innerHTML = STATUSES.map(s => `<div class="${cls(s)}" style="flex:${counts[s]}"></div>`).join('');
+  $('f-legend').innerHTML = STATUSES.map(s => `<span><i class="dot ${cls(s)}"></i>${s} ${counts[s]}</span>`).join('');
+  document.querySelectorAll('.f-kpi').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.status === state.status && !b.classList.contains('static'))));
+}
+
+function renderTable() {
+  const rows = visibleRows();
+  const tbody = $('f-tbody');
+  const laneCell = r => `<span class="lane">${esc(r.origin || '?')}<span class="arr">→</span>${esc(r.destination || '?')}</span>`;
+  if (!state.rows.length) tbody.innerHTML = `<tr><td colspan="10" class="empty">No data yet. Upload a CSV or load the sample data.</td></tr>`;
+  else if (!rows.length) tbody.innerHTML = `<tr><td colspan="10" class="empty">No shipments match the current filters.</td></tr>`;
+  else tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td><span class="sku">${esc(r.shipment_id)}</span>${r.flags.length ? `<span class="flag" title="${esc(r.flags.join('; '))}">⚠</span>` : ''}</td>
+        <td>${laneCell(r)}</td>
+        <td>${esc(r.carrier)}</td>
+        <td class="r">${fmtMoney2(r.freight_cost)}${r.distance_miles !== null ? `<span class="sub">${fmtInt(r.distance_miles)} mi</span>` : ''}</td>
+        <td class="r">${fmtCpm(r.cpm)}</td>
+        <td class="r">${fmtCpm(r.lane_avg)}${r.lane_avg !== null ? `<span class="sub">n=${r.lane_count}</span>` : ''}</td>
+        <td class="r ${r.variance > 0 ? 'pos' : r.variance < 0 ? 'neg' : ''}">${fmtPct(r.variance)}</td>
+        <td class="r ${r.late_days > 0 ? 'pos' : r.late_days < 0 ? 'neg' : ''}">${r.late_days === null ? '—' : r.late_days > 0 ? '+' + r.late_days : r.late_days}</td>
+        <td class="r">${r.excess > 0 ? fmtMoney(r.excess) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td><span class="status ${cls(r.status)}"><i class="dot ${cls(r.status)}"></i>${r.status}</span></td>
+      </tr>`).join('');
+  const excess = rows.reduce((s, r) => s + r.excess, 0);
+  $('f-tfoot').textContent = rows.length ? `${rows.length} shipment${rows.length === 1 ? '' : 's'} shown · estimated excess ${fmtMoney(excess)}` : '';
+  $('f-count').textContent = state.rows.length ? `${rows.length} of ${state.rows.length}` : '';
+  $('f-export').disabled = !rows.length;
+  document.querySelectorAll('#f-table th[data-key]').forEach(th => {
+    const active = th.dataset.key === state.sortKey;
+    if (active) th.setAttribute('aria-sort', state.sortDir === 'asc' ? 'ascending' : 'descending'); else th.removeAttribute('aria-sort');
+    th.querySelector('.arrow').textContent = active && state.sortDir === 'desc' ? '▼' : '▲';
+  });
+}
+
+function render() { renderKPIs(); renderTable(); }
+
+function load(text, sourceName) {
+  const notice = $('f-notice'); notice.className = 'notice';
+  const { headers, records } = parseCSV(text);
+  const missing = REQUIRED.filter(h => !headers.includes(h));
+  if (missing.length) {
+    notice.className = 'notice error';
+    notice.textContent = `Could not load ${sourceName}: missing column${missing.length > 1 ? 's' : ''} ${missing.join(', ')}. Download the sample CSV to see the expected format.`;
+    return;
+  }
+  const { rows, skipped } = buildRows(records);
+  // Open on the exceptions: that is what the tool is for. 'All statuses' is one click away.
+  Object.assign(state, { rows, skipped, sourceName, search: '', status: 'flagged', carrier: '', lane: '', sortKey: 'excess', sortDir: 'desc' });
+  $('f-search').value = ''; $('f-status-filter').value = 'flagged';
+  fillSelect('f-carrier-filter', [...new Set(rows.map(r => r.carrier))].sort(), 'All carriers');
+  fillSelect('f-lane-filter', [...new Set(rows.map(r => r.lane))].sort(), 'All lanes');
+  $('f-source').innerHTML = `Loaded <strong>${esc(sourceName)}</strong> · ${rows.length} shipments`;
+  const flagged = rows.filter(r => r.flags.length).length, notes = [];
+  if (flagged) notes.push(`${flagged} row${flagged > 1 ? 's' : ''} had missing or invalid values (marked ⚠, hover for details)`);
+  if (skipped) notes.push(`${skipped} row${skipped > 1 ? 's' : ''} without a shipment ID skipped`);
+  notice.textContent = notes.join(' · ');
+  render();
+}
+
+/* ---------- 4. Events ---------- */
+$('f-file-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => load(String(reader.result), file.name);
+  reader.readAsText(file); e.target.value = '';
+});
+$('f-load-sample').addEventListener('click', () => load(SAMPLE_SHIPMENTS_CSV, 'sample-shipments.csv'));
+$('f-download-sample').addEventListener('click', () => download('sample-shipments.csv', SAMPLE_SHIPMENTS_CSV));
+
+$('f-export').addEventListener('click', () => {
+  const headers = ['shipment_id','lane','origin','destination','carrier','distance_miles','freight_cost','cost_per_mile','lane_avg_cost_per_mile','lane_shipments',
+                   'variance_percent','ship_date','promised_delivery_date','actual_delivery_date','late_days','estimated_excess_cost','status','notes'];
+  const rows = visibleRows().map(r => ({
+    ...r,
+    distance_miles: r.distance_miles ?? '', freight_cost: r.freight_cost === null ? '' : r.freight_cost.toFixed(2),
+    cost_per_mile: r.cpm === null ? '' : r.cpm.toFixed(3), lane_avg_cost_per_mile: r.lane_avg === null ? '' : r.lane_avg.toFixed(3),
+    lane_shipments: r.lane_count, variance_percent: r.variance === null ? '' : (r.variance * 100).toFixed(1),
+    late_days: r.late_days ?? '', estimated_excess_cost: r.excess.toFixed(2), notes: r.flags.join('; '),
+  }));
+  const suffix = state.status === 'flagged' ? '-flagged' : state.status ? '-' + cls(state.status) : '';
+  download(`${(state.sourceName || 'shipments').replace(/\.csv$/i, '')}-exceptions${suffix}.csv`, toCSV(headers, rows));
+});
+
+$('f-search').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
+$('f-status-filter').addEventListener('change', e => { state.status = e.target.value; render(); });
+$('f-carrier-filter').addEventListener('change', e => { state.carrier = e.target.value; renderTable(); });
+$('f-lane-filter').addEventListener('change', e => { state.lane = e.target.value; renderTable(); });
+document.querySelectorAll('.f-kpi').forEach(b => b.addEventListener('click', () => {
+  if (b.classList.contains('static')) return;
+  state.status = b.dataset.status === state.status ? '' : b.dataset.status;
+  $('f-status-filter').value = state.status; render();
+}));
+document.querySelectorAll('#f-table th[data-key]').forEach(th => th.querySelector('button').addEventListener('click', () => {
+  const key = th.dataset.key;
+  if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  else { state.sortKey = key; state.sortDir = ['shipment_id', 'lane', 'carrier', 'status'].includes(key) ? 'asc' : 'desc'; }
+  renderTable();
+}));
+
+AI.wire('freight', () => {
+  if (!state.rows.length) return null;
+  const rows = state.rows, flagged = rows.filter(isFlagged);
+  const spend = rows.reduce((s, r) => s + (r.freight_cost ?? 0), 0), excess = rows.reduce((s, r) => s + r.excess, 0);
+  const item = r => ({ shipment_id: r.shipment_id, lane: r.lane, carrier: r.carrier, status: r.status, freight_cost_usd: r.freight_cost === null ? null : Math.round(r.freight_cost),
+                       cost_per_mile_usd: r.cpm === null ? null : +r.cpm.toFixed(2), lane_avg_cost_per_mile_usd: r.lane_avg === null ? null : +r.lane_avg.toFixed(2),
+                       variance_percent: r.variance === null ? null : Math.round(r.variance * 100), late_days: r.late_days, estimated_excess_usd: Math.round(r.excess) });
+  const group = key => { const m = {}; for (const r of flagged) { const g = m[r[key]] ??= { [key]: r[key], flagged: 0, late: 0, high_cost: 0, estimated_excess_usd: 0 };
+    g.flagged++; if (r.late_days > 0) g.late++; if (r.status === 'High Cost' || r.status === 'Critical') g.high_cost++; g.estimated_excess_usd += Math.round(r.excess); }
+    return Object.values(m).sort((a, b) => b.estimated_excess_usd - a.estimated_excess_usd || b.flagged - a.flagged); };
+  return {
+    _scope: `${rows.length} shipments`,
+    summary: { shipments: rows.length, total_freight_usd: Math.round(spend), flagged: flagged.length, critical: rows.filter(r => r.status === 'Critical').length,
+               high_cost: rows.filter(r => r.status === 'High Cost').length, late: rows.filter(r => r.status === 'Late').length,
+               estimated_excess_usd: Math.round(excess), excess_percent_of_freight: spend ? +(excess / spend * 100).toFixed(1) : null },
+    top_exceptions_by_excess: [...flagged].sort((a, b) => b.excess - a.excess || (b.late_days ?? 0) - (a.late_days ?? 0)).slice(0, 10).map(item),
+    flagged_by_carrier: group('carrier'),
+    flagged_by_lane: group('lane').slice(0, 6),
+  };
+});
+
+load(SAMPLE_SHIPMENTS_CSV, 'sample-shipments.csv');
 })();
 </script>
 </body>
