@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supply Chain AI Toolkit</title>
+<meta name="description" content="Practical supply-chain analytics tools built with AI-assisted coding. Inventory planning, freight exceptions and supplier scorecards — all processed in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Tokens ---------- */
+  :root {
+    --bg: #ffffff;
+    --panel: #f5f6f8;
+    --line: #dde1e6;
+    --ink: #17202a;
+    --muted: #66717d;
+    --accent: #1d4e89;
+    --accent-ink: #ffffff;
+
+    --critical: #b3261e;  --critical-bg: #fbeae9;
+    --reorder:  #a35d00;  --reorder-bg:  #fcf1e0;
+    --overstock:#3457c7;  --overstock-bg:#e9eefb;
+    --healthy:  #1e7f4f;  --healthy-bg:  #e6f4ec;
+
+    --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --radius: 4px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: var(--accent); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Header / tabs ---------- */
+  header { border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  .masthead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 18px 0 12px; flex-wrap: wrap; }
+  .masthead h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .masthead h1 span { color: var(--muted); font-weight: 400; margin-left: 10px; font-size: 13px; }
+  .masthead .meta { color: var(--muted); font-size: 12.5px; }
+  .masthead .meta a { color: inherit; }
+
+  nav[role="tablist"] { display: flex; gap: 2px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+  nav[role="tablist"]::-webkit-scrollbar { display: none; }
+  nav[role="tablist"] button {
+    background: none; border: 0; border-bottom: 2px solid transparent;
+    padding: 8px 12px 10px; margin-bottom: -1px; color: var(--muted); cursor: pointer; font-weight: 500;
+  }
+  nav[role="tablist"] button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  nav[role="tablist"] button:hover { color: var(--ink); }
+  nav small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 11px; }
+
+  main { padding: 18px 0 40px; }
+  [role="tabpanel"][hidden] { display: none; }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .toolbar .spacer { flex: 1; }
+  .btn {
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 6px 12px; cursor: pointer; font-weight: 500; line-height: 1.3;
+  }
+  .btn:hover { border-color: #b8bfc8; background: var(--panel); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { background: #17406f; }
+  .btn.link { border-color: transparent; color: var(--accent); padding-left: 6px; padding-right: 6px; }
+  .btn.link:hover { background: var(--panel); }
+  .source { color: var(--muted); font-size: 12.5px; }
+  .source strong { color: var(--ink); font-weight: 500; }
+
+  /* ---------- KPI strip (filters) ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .kpi {
+    background: var(--bg); border: 0; border-right: 1px solid var(--line); text-align: left;
+    padding: 10px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+  }
+  .kpi:last-child { border-right: 0; }
+  .kpi:hover { background: var(--panel); }
+  .kpi .label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .kpi .value { font-family: var(--mono); font-size: 22px; font-weight: 500; line-height: 1.1; }
+  .kpi .sub { font-size: 11.5px; color: var(--muted); }
+  .kpi[aria-pressed="true"] { background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.critical { background: var(--critical); } .dot.reorder { background: var(--reorder); }
+  .dot.overstock { background: var(--overstock); } .dot.healthy { background: var(--healthy); }
+
+  .strip { display: flex; height: 6px; margin-top: 8px; border-radius: 3px; overflow: hidden; background: var(--panel); }
+  .strip div { transition: none; }
+  .strip .critical { background: var(--critical); } .strip .reorder { background: var(--reorder); }
+  .strip .overstock { background: var(--overstock); } .strip .healthy { background: var(--healthy); }
+  .legend { display: flex; gap: 14px; margin-top: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* ---------- Filters ---------- */
+  .filters { display: flex; gap: 8px; align-items: center; margin: 18px 0 8px; flex-wrap: wrap; }
+  .filters input[type="search"], .filters select {
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; background: var(--bg); min-width: 200px;
+  }
+  .filters select { min-width: 150px; }
+  .filters .count { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; vertical-align: middle; }
+  th { background: var(--panel); font-weight: 500; font-size: 12.5px; color: var(--muted); position: sticky; top: 0; user-select: none; }
+  th button { background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; display: inline-flex; gap: 5px; align-items: center; }
+  th button:hover { color: var(--ink); }
+  th .arrow { font-size: 10px; opacity: 0; }
+  th[aria-sort] .arrow { opacity: 1; color: var(--ink); }
+  th.r, td.r { text-align: right; }
+  td.r { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  td.product { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: #fafbfc; }
+  td .sub { display: block; font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+  td .sku { font-family: var(--mono); }
+  .flag { display: inline-block; margin-left: 6px; color: var(--reorder); cursor: help; font-weight: 600; font-size: 12px; }
+
+  .status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 6px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+  .status.critical { color: var(--critical); background: var(--critical-bg); }
+  .status.reorder { color: var(--reorder); background: var(--reorder-bg); }
+  .status.overstock { color: var(--overstock); background: var(--overstock-bg); }
+  .status.healthy { color: var(--healthy); background: var(--healthy-bg); }
+
+  tfoot td { background: var(--panel); color: var(--muted); font-size: 12.5px; }
+  .empty { padding: 32px; text-align: center; color: var(--muted); }
+  .notice { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+  .notice.error { color: var(--critical); }
+
+  /* ---------- Method panel ---------- */
+  details { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+  summary { cursor: pointer; font-weight: 500; color: var(--muted); }
+  summary:hover { color: var(--ink); }
+  .method { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 12px; font-size: 13px; }
+  .method h3 { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+  .method dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; }
+  .method dt { color: var(--ink); font-weight: 500; }
+  .method dd { margin: 0; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .method ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  .method li { margin-bottom: 3px; }
+
+  /* ---------- Coming next ---------- */
+  .coming { border: 1px dashed var(--line); border-radius: var(--radius); padding: 28px; max-width: 640px; }
+  .coming h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+  .coming p { margin: 0 0 12px; color: var(--muted); }
+  .coming ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  .coming .tag { display: inline-block; font-size: 11.5px; font-weight: 500; color: var(--accent); background: #e9eefb; padding: 2px 8px; border-radius: 10px; margin-bottom: 10px; }
+
+
+  /* ---------- Supplier Scorecard ---------- */
+  .weights { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 16px; background: var(--panel); }
+  .weights .title { font-size: 12.5px; color: var(--muted); margin-right: 4px; }
+  .weights label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .weights input { width: 58px; border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 6px; text-align: right; font-family: var(--mono); background: var(--bg); }
+  .weights .total { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-left: 4px; }
+  .weights .total.bad { color: var(--critical); font-weight: 500; }
+  .weights .btn { padding: 4px 10px; font-size: 12.5px; }
+
+  #s-kpi-avg { cursor: default; }
+  .rating.preferred  { color: var(--healthy);   background: var(--healthy-bg); }
+  .rating.acceptable { color: var(--overstock); background: var(--overstock-bg); }
+  .rating.watch      { color: var(--reorder);   background: var(--reorder-bg); }
+  .rating.critical   { color: var(--critical);  background: var(--critical-bg); }
+  .dot.preferred { background: var(--healthy); } .dot.acceptable { background: var(--overstock); }
+  .dot.watch { background: var(--reorder); }
+  .strip .preferred { background: var(--healthy); } .strip .acceptable { background: var(--overstock); }
+  .strip .watch { background: var(--reorder); }
+  tbody tr.selectable { cursor: pointer; }
+  tbody tr.selected td { background: #eef2f9; }
+  td .rank { color: var(--muted); font-family: var(--mono); font-size: 12px; margin-right: 8px; }
+
+  .detail { border: 1px solid var(--line); border-radius: var(--radius); margin-top: 12px; }
+  .detail .head { display: flex; align-items: baseline; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .detail .head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .detail .head .score { font-family: var(--mono); font-size: 22px; font-weight: 500; }
+  .detail .head .close { margin-left: auto; }
+  .detail table { font-size: 13px; }
+  .detail th { position: static; }
+  .detail .bar { display: inline-block; width: 120px; height: 6px; background: var(--panel); border-radius: 3px; vertical-align: middle; margin-right: 8px; overflow: hidden; }
+  .detail .bar i { display: block; height: 100%; background: var(--accent); }
+  .detail .summary { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .detail .summary strong { color: var(--ink); font-weight: 500; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 820px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .kpi:nth-child(2) { border-right: 0; }
+    .kpi:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    .method { grid-template-columns: 1fr; }
+    .filters .count { margin-left: 0; width: 100%; }
+    td.product { max-width: 180px; }
+  }
+  @media (prefers-reduced-motion: no-preference) { .kpi, .btn { transition: background-color .12s; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="masthead">
+      <h1>Supply Chain AI Toolkit <span>Practical analytics tools, built with AI-assisted coding</span></h1>
+      <div class="meta">Runs entirely in your browser · no data is uploaded · <a href="https://github.com/esmailshahid-hue/supply-chain-ai-toolkit" target="_blank" rel="noopener">Source on GitHub</a></div>
+    </div>
+    <nav role="tablist" aria-label="Tools">
+      <button role="tab" id="tab-inventory" aria-controls="panel-inventory" aria-selected="true">Inventory Planner</button>
+      <button role="tab" id="tab-freight" aria-controls="panel-freight" aria-selected="false">Freight Exceptions <small>Coming next</small></button>
+      <button role="tab" id="tab-supplier" aria-controls="panel-supplier" aria-selected="false">Supplier Scorecard</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ================= Inventory Planner ================= -->
+  <section id="panel-inventory" role="tabpanel" aria-labelledby="tab-inventory">
+
+    <div class="toolbar">
+      <label class="btn primary" for="file-input">Upload CSV</label>
+      <input id="file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
+      <button class="btn" id="load-sample">Load sample data</button>
+      <button class="btn link" id="download-sample">Download sample CSV</button>
+      <span class="source" id="source"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="export">Export results CSV</button>
+    </div>
+
+    <div class="kpis" id="kpis" aria-label="Summary. Click a status to filter the table.">
+      <button class="kpi" data-status="" aria-pressed="true">
+        <span class="label">Total SKUs</span>
+        <span class="value" id="k-total">0</span>
+        <span class="sub" id="k-total-sub">&nbsp;</span>
+      </button>
+      <button class="kpi" data-status="Critical" aria-pressed="false">
+        <span class="label"><i class="dot critical"></i>Critical</span>
+        <span class="value" id="k-critical">0</span>
+        <span class="sub">Position below lead-time demand</span>
+      </button>
+      <button class="kpi" data-status="Reorder" aria-pressed="false">
+        <span class="label"><i class="dot reorder"></i>Reorder</span>
+        <span class="value" id="k-reorder">0</span>
+        <span class="sub">Position below reorder point</span>
+      </button>
+      <button class="kpi" data-status="Overstock" aria-pressed="false">
+        <span class="label"><i class="dot overstock"></i>Overstock</span>
+        <span class="value" id="k-overstock">0</span>
+        <span class="sub">More than 90 days of cover</span>
+      </button>
+    </div>
+    <div class="strip" id="strip" aria-hidden="true"></div>
+    <div class="legend" id="legend"></div>
+
+    <div class="filters">
+      <input type="search" id="search" placeholder="Search SKU or product" aria-label="Search SKU or product">
+      <select id="status-filter" aria-label="Filter by status">
+        <option value="">All statuses</option>
+        <option>Critical</option>
+        <option>Reorder</option>
+        <option>Overstock</option>
+        <option>Healthy</option>
+      </select>
+      <span class="count" id="count"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="table">
+        <thead>
+          <tr>
+            <th data-key="sku"><button>SKU <span class="arrow">▲</span></button></th>
+            <th data-key="product_name"><button>Product <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="current_inventory"><button>Inventory <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="days_of_cover"><button>Days of cover <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="reorder_point"><button>Reorder point <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="suggested_order"><button>Suggested order <span class="arrow">▲</span></button></th>
+            <th data-key="status"><button>Status <span class="arrow">▲</span></button></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot><tr><td colspan="7" id="tfoot"></td></tr></tfoot>
+      </table>
+    </div>
+    <p class="notice" id="notice"></p>
+
+    <details>
+      <summary>How the numbers are calculated</summary>
+      <div class="method">
+        <div>
+          <h3>Formulas</h3>
+          <dl>
+            <dt>Days of cover</dt><dd>current_inventory ÷ avg_daily_sales</dd>
+            <dt>Lead-time demand</dt><dd>avg_daily_sales × lead_time_days</dd>
+            <dt>Reorder point</dt><dd>lead-time demand + safety_stock</dd>
+            <dt>Inventory position</dt><dd>current_inventory + open_po_qty</dd>
+            <dt>Suggested order</dt><dd>max(reorder point − position, 0), rounded up to MOQ</dd>
+          </dl>
+          <h3 style="margin-top:12px">Status (checked in order)</h3>
+          <dl>
+            <dt>Critical</dt><dd>position &lt; lead-time demand</dd>
+            <dt>Reorder</dt><dd>position &lt; reorder point</dd>
+            <dt>Overstock</dt><dd>days of cover &gt; 90</dd>
+            <dt>Healthy</dt><dd>everything else</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Data handling</h3>
+          <ul>
+            <li>Expected columns: <span class="num">sku, product_name, current_inventory, open_po_qty, avg_daily_sales, lead_time_days, safety_stock, moq, unit_cost</span>. Header matching is case-insensitive.</li>
+            <li>Blank or non-numeric values are treated as 0 and the row is flagged (⚠) so nothing silently changes the result.</li>
+            <li>Zero or missing sales: days of cover shows as “no sales”; lead-time demand is 0, so the reorder point equals safety stock. Any stock on hand with no sales counts as overstock.</li>
+            <li>MOQ of 0, blank or negative is treated as 1 (no rounding). A suggested order is never below the shortfall.</li>
+            <li>Rows without a SKU are skipped. Duplicate SKUs are kept and flagged.</li>
+            <li>Negative quantities are clamped to 0 and flagged.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= Coming next ================= -->
+  <section id="panel-freight" role="tabpanel" aria-labelledby="tab-freight" hidden>
+    <div class="coming">
+      <span class="tag">Coming next</span>
+      <h2>Freight Exceptions</h2>
+      <p>Upload a shipment file and surface late, at-risk and cost-variance shipments by lane and carrier.</p>
+      <ul>
+        <li>Planned vs actual transit, on-time % by carrier</li>
+        <li>Cost-per-unit variance against rate card</li>
+        <li>Exception list ready to send to the carrier</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="panel-supplier" role="tabpanel" aria-labelledby="tab-supplier" hidden>
+
+    <div class="toolbar">
+      <label class="btn primary" for="s-file-input">Upload CSV</label>
+      <input id="s-file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
+      <button class="btn" id="s-load-sample">Load sample data</button>
+      <button class="btn link" id="s-download-sample">Download sample CSV</button>
+      <span class="source" id="s-source"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="s-export">Export scorecard CSV</button>
+    </div>
+
+    <div class="weights" id="weights">
+      <span class="title">Weights</span>
+      <label>Delivery <input type="number" min="0" max="100" step="1" data-w="delivery" value="35">%</label>
+      <label>Quality <input type="number" min="0" max="100" step="1" data-w="quality" value="25">%</label>
+      <label>Cost <input type="number" min="0" max="100" step="1" data-w="cost" value="25">%</label>
+      <label>Service <input type="number" min="0" max="100" step="1" data-w="service" value="15">%</label>
+      <span class="total" id="w-total">Total 100%</span>
+      <button class="btn" id="w-reset">Reset to defaults</button>
+    </div>
+
+    <div class="kpis" aria-label="Summary. Click a rating to filter the table.">
+      <button class="kpi s-kpi" data-rating="" aria-pressed="true">
+        <span class="label">Suppliers</span>
+        <span class="value" id="s-total">0</span>
+        <span class="sub" id="s-total-sub">&nbsp;</span>
+      </button>
+      <button class="kpi s-kpi" data-rating="" aria-pressed="false" id="s-kpi-avg">
+        <span class="label">Average score</span>
+        <span class="value" id="s-avg">—</span>
+        <span class="sub">Spend-weighted <span class="num" id="s-avg-w">—</span></span>
+      </button>
+      <button class="kpi s-kpi" data-rating="" aria-pressed="false" id="s-kpi-top" title="Open the top supplier's detail">
+        <span class="label"><i class="dot preferred"></i>Highest rated</span>
+        <span class="value" id="s-top" style="font-size:16px;font-family:var(--sans);font-weight:600">—</span>
+        <span class="sub" id="s-top-sub">&nbsp;</span>
+      </button>
+      <button class="kpi s-kpi" data-rating="attention" aria-pressed="false">
+        <span class="label"><i class="dot critical"></i>Requiring attention</span>
+        <span class="value" id="s-attention">0</span>
+        <span class="sub">Watch or Critical rating</span>
+      </button>
+    </div>
+    <div class="strip" id="s-strip" aria-hidden="true"></div>
+    <div class="legend" id="s-legend"></div>
+
+    <div class="filters">
+      <input type="search" id="s-search" placeholder="Search supplier" aria-label="Search supplier">
+      <select id="s-rating-filter" aria-label="Filter by rating">
+        <option value="">All ratings</option>
+        <option>Preferred</option>
+        <option>Acceptable</option>
+        <option>Watch</option>
+        <option>Critical</option>
+      </select>
+      <span class="count" id="s-count"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="s-table">
+        <thead>
+          <tr>
+            <th data-key="supplier"><button>Supplier <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="annual_spend"><button>Spend <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="cost"><button>Cost <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="quality"><button>Quality <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="delivery"><button>Delivery <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="service"><button>Service <span class="arrow">▲</span></button></th>
+            <th class="r" data-key="overall"><button>Overall <span class="arrow">▲</span></button></th>
+            <th data-key="rating"><button>Rating <span class="arrow">▲</span></button></th>
+          </tr>
+        </thead>
+        <tbody id="s-tbody"></tbody>
+        <tfoot><tr><td colspan="8" id="s-tfoot"></td></tr></tfoot>
+      </table>
+    </div>
+    <p class="notice" id="s-notice">Select a supplier to see what drove its score.</p>
+
+    <div class="detail" id="s-detail" hidden></div>
+
+    <details>
+      <summary>How suppliers are scored</summary>
+      <div class="method">
+        <div>
+          <h3>Dimension scores (each 0–100, clamped)</h3>
+          <dl>
+            <dt>Delivery</dt><dd>otif_percent</dd>
+            <dt>Quality</dt><dd>100 − defect_rate_percent × 10</dd>
+            <dt>Cost</dt><dd>100 − max(price_variance_percent, 0) × 10</dd>
+            <dt>Service</dt><dd>100 − avg_response_hours × (100 ÷ 48)</dd>
+            <dt>Overall</dt><dd>Σ (dimension score × weight)</dd>
+          </dl>
+          <p style="margin:8px 0 0;font-size:12.5px;color:var(--muted)">So a 2% defect rate scores 80, a 5% unfavorable price variance scores 50, and a 24-hour response time scores 50. Favorable (negative) price variance scores 100. Weights must sum to 100%.</p>
+          <h3 style="margin-top:12px">Ratings</h3>
+          <dl>
+            <dt>Preferred</dt><dd>overall ≥ 85</dd>
+            <dt>Acceptable</dt><dd>70 – 84.99</dd>
+            <dt>Watch</dt><dd>55 – 69.99</dd>
+            <dt>Critical</dt><dd>&lt; 55</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Data handling</h3>
+          <ul>
+            <li>Expected columns: <span class="num">supplier, annual_spend, otif_percent, defect_rate_percent, price_variance_percent, avg_response_hours</span>. Header matching is case-insensitive.</li>
+            <li>Blank or non-numeric values are treated as 0 and the row is flagged (⚠). A blank OTIF therefore scores 0 on delivery; a blank defect rate scores 100 on quality. Check flagged rows before acting on them.</li>
+            <li>Price variance may be negative (favorable). Other fields are clamped at 0.</li>
+            <li>Rows without a supplier name are skipped. Duplicate names are kept and flagged.</li>
+            <li>Ranking is by overall score, ties broken by annual spend.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+  </section>
+
+</main>
+
+<script>
+/* =====================================================================
+   Supply Chain AI Toolkit — Inventory Planner
+   Plain JavaScript, no dependencies. Everything runs in the browser.
+
+   Sections:
+     1. Sample data
+     2. CSV parse / serialise
+     3. Calculations (the business logic)
+     4. State + rendering
+     5. Events
+   ===================================================================== */
+
+/* ---------- 1. Sample data ---------- */
+const SAMPLE_CSV = `sku,product_name,current_inventory,open_po_qty,avg_daily_sales,lead_time_days,safety_stock,moq,unit_cost
+SKU-1001,Pallet Jack 2.5T,42,0,1.8,21,20,5,289.00
+SKU-1002,Stretch Wrap 18in x 1500ft,520,200,22.5,10,120,48,9.85
+SKU-1003,Corrugated Box 12x12x12,1450,0,64.0,14,400,250,1.12
+SKU-1004,Nitrile Gloves L (100ct),96,240,18.4,28,150,48,7.40
+SKU-1005,Safety Vest Hi-Vis L,210,0,1.1,12,15,25,4.95
+SKU-1006,Packing Tape 2in (36 rolls),58,0,9.7,7,40,12,31.20
+SKU-1007,Wooden Pallet 48x40,420,200,35.0,9,150,100,14.50
+SKU-1008,Bubble Wrap 12in x 175ft,64,50,4.2,18,30,10,18.75
+SKU-1009,Label Printer Ribbon,22,50,3.1,30,25,10,12.60
+SKU-1010,Shipping Label 4x6 (500ct),610,0,41.0,6,150,50,6.30
+SKU-1011,Steel Shelving Unit 72in,30,8,0.6,45,8,4,162.00
+SKU-1012,Box Cutter Safety Knife,480,0,2.4,14,20,50,3.15
+SKU-1013,Hand Truck 600lb,9,6,0.9,35,10,2,118.00
+SKU-1014,Poly Mailer 10x13 (500ct),240,150,12.8,20,100,25,22.40
+SKU-1015,Void Fill Paper Roll,0,80,6.5,15,50,20,27.90
+SKU-1016,Thermal Receipt Paper (50ct),73,0,5.0,11,30,10,19.99
+SKU-1017,Strapping Kit Poly 1/2in,38,0,1.3,25,10,5,44.00
+SKU-1018,Anti-Slip Floor Mat 3x5,66,0,0.4,40,5,6,39.50
+SKU-1019,Barcode Scanner Wireless,36,24,1.6,32,12,4,149.00
+SKU-1020,Dock Bumper Rubber,41,0,0.2,60,4,6,58.00
+SKU-1021,Forklift Battery Water (5gal),40,0,2.2,10,15,4,21.00
+SKU-1022,Pallet Wrap Dispenser,85,0,0.7,14,6,10,26.80
+SKU-1023,Cold Chain Gel Pack 16oz,1350,400,48.0,21,300,200,1.45
+SKU-1024,Tote Bin 27x17x12 Grey,1230,0,3.9,18,40,60,11.20
+SKU-1025,Pallet Corner Boards (100ct),129,100,8.4,24,60,50,34.00
+SKU-1026,Marker Paint Yellow (12ct),44,0,0,14,6,12,15.60
+SKU-1027,Edge Protector Foam (case),7,0,2.9,19,25,10,41.75
+SKU-1028,LED Work Light Magnetic,52,0,1.0,30,10,12,23.90
+SKU-1029,Zip Ties 14in (1000ct),19,20,4.6,12,30,10,17.25
+SKU-1030,Inventory Tag Wire (500ct),260,0,2.0,16,20,25,9.40
+SKU-1031,Ratchet Strap 2in x 27ft,55,,3.0,14,20,,12.80
+SKU-1032,Shrink Film Roll 20in,n/a,40,6.0,12,30,10,38.00
+`;
+
+const REQUIRED = ['sku','product_name','current_inventory','open_po_qty','avg_daily_sales','lead_time_days','safety_stock','moq','unit_cost'];
+
+/* ---------- 2. CSV parse / serialise (RFC 4180-ish, handles quotes) ---------- */
+function parseCSV(text) {
+  const rows = []; let row = [], field = '', inQuotes = false;
+  text = text.replace(/^\uFEFF/, '');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+      else field += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); rows.push(row); row = []; field = '';
+    } else field += c;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  const nonEmpty = rows.filter(r => r.some(v => v.trim() !== ''));
+  if (!nonEmpty.length) return { headers: [], records: [] };
+  const headers = nonEmpty[0].map(h => h.trim().toLowerCase());
+  const records = nonEmpty.slice(1).map(r => Object.fromEntries(headers.map((h, i) => [h, (r[i] ?? '').trim()])));
+  return { headers, records };
+}
+
+function toCSV(headers, rows) {
+  const esc = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n');
+}
+
+/* ---------- 3. Calculations ---------- */
+// Parse a number safely. Returns { value, flag } where flag explains any correction.
+function num(raw, field) {
+  const s = String(raw ?? '').replace(/[,$\s]/g, '');
+  if (s === '') return { value: 0, flag: `${field} blank → 0` };
+  const n = Number(s);
+  if (!Number.isFinite(n)) return { value: 0, flag: `${field} "${raw}" → 0` };
+  if (n < 0) return { value: 0, flag: `${field} negative → 0` };
+  return { value: n, flag: null };
+}
+
+function computeRow(rec) {
+  const flags = [];
+  const take = f => { const r = num(rec[f], f); if (r.flag) flags.push(r.flag); return r.value; };
+
+  const current_inventory = take('current_inventory');
+  const open_po_qty       = take('open_po_qty');
+  const avg_daily_sales   = take('avg_daily_sales');
+  const lead_time_days    = take('lead_time_days');
+  const safety_stock      = take('safety_stock');
+  const unit_cost         = take('unit_cost');
+  let   moq               = take('moq');
+  if (moq < 1) { moq = 1; if (String(rec.moq ?? '').trim() !== '') flags.push('moq < 1 → 1'); }
+
+  const days_of_cover      = avg_daily_sales > 0 ? current_inventory / avg_daily_sales : Infinity;
+  const lead_time_demand   = avg_daily_sales * lead_time_days;
+  const reorder_point      = lead_time_demand + safety_stock;
+  const inventory_position = current_inventory + open_po_qty;
+
+  const shortfall = Math.max(reorder_point - inventory_position, 0);
+  const suggested_order = shortfall > 0 ? Math.ceil(shortfall / moq) * moq : 0;
+
+  let status;
+  if (inventory_position < lead_time_demand) status = 'Critical';
+  else if (inventory_position < reorder_point) status = 'Reorder';
+  else if (days_of_cover > 90) status = 'Overstock';
+  else status = 'Healthy';
+
+  return {
+    sku: rec.sku, product_name: rec.product_name || '',
+    current_inventory, open_po_qty, avg_daily_sales, lead_time_days, safety_stock, moq, unit_cost,
+    days_of_cover, lead_time_demand, reorder_point, inventory_position, suggested_order,
+    order_value: suggested_order * unit_cost, status, flags,
+  };
+}
+
+function computeAll(records) {
+  const seen = new Set(), out = [];
+  let skipped = 0;
+  for (const rec of records) {
+    if (!rec.sku) { skipped++; continue; }
+    const row = computeRow(rec);
+    if (seen.has(row.sku)) row.flags.push('duplicate sku'); else seen.add(row.sku);
+    out.push(row);
+  }
+  return { rows: out, skipped };
+}
+
+/* ---------- 4. State + rendering ---------- */
+const $ = id => document.getElementById(id);
+const state = { rows: [], skipped: 0, sourceName: '', search: '', status: '', sortKey: 'status', sortDir: 'asc' };
+const STATUS_ORDER = { Critical: 0, Reorder: 1, Overstock: 2, Healthy: 3 };
+const STATUSES = ['Critical', 'Reorder', 'Overstock', 'Healthy'];
+
+const fmtInt = n => Math.round(n).toLocaleString('en-US');
+const fmtDays = d => d === Infinity ? '—' : d.toLocaleString('en-US', { maximumFractionDigits: 1 });
+const fmtMoney = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function visibleRows() {
+  const q = state.search.trim().toLowerCase();
+  let rows = state.rows.filter(r =>
+    (!state.status || r.status === state.status) &&
+    (!q || r.sku.toLowerCase().includes(q) || r.product_name.toLowerCase().includes(q)));
+  const k = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
+  rows.sort((a, b) => {
+    let av = a[k], bv = b[k];
+    if (k === 'status') { av = STATUS_ORDER[av]; bv = STATUS_ORDER[bv]; }
+    const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
+    return (cmp || a.sku.localeCompare(b.sku)) * dir;
+  });
+  return rows;
+}
+
+function renderKPIs() {
+  const counts = Object.fromEntries(STATUSES.map(s => [s, 0]));
+  state.rows.forEach(r => counts[r.status]++);
+  const total = state.rows.length;
+  $('k-total').textContent = fmtInt(total);
+  $('k-critical').textContent = fmtInt(counts.Critical);
+  $('k-reorder').textContent = fmtInt(counts.Reorder);
+  $('k-overstock').textContent = fmtInt(counts.Overstock);
+  const toOrder = state.rows.filter(r => r.suggested_order > 0);
+  const value = toOrder.reduce((s, r) => s + r.order_value, 0);
+  $('k-total-sub').textContent = total ? `${toOrder.length} need an order · ${fmtMoney(value)}` : 'Load a CSV to begin';
+
+  $('strip').innerHTML = STATUSES.map(s => `<div class="${s.toLowerCase()}" style="flex:${counts[s]}"></div>`).join('');
+  $('legend').innerHTML = STATUSES.map(s =>
+    `<span><i class="dot ${s.toLowerCase()}"></i>${s} ${total ? Math.round(counts[s] / total * 100) : 0}%</span>`).join('');
+  document.querySelectorAll('.kpi').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.status === state.status)));
+}
+
+function renderTable() {
+  const rows = visibleRows();
+  const tbody = $('tbody');
+  if (!state.rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No data yet. Upload a CSV or load the sample data.</td></tr>`;
+  } else if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No SKUs match the current filter.</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td><span class="sku">${esc(r.sku)}</span>${r.flags.length ? `<span class="flag" title="${esc(r.flags.join('; '))}">⚠</span>` : ''}</td>
+        <td class="product" title="${esc(r.product_name)}">${esc(r.product_name)}</td>
+        <td class="r">${fmtInt(r.current_inventory)}${r.open_po_qty > 0 ? `<span class="sub">+${fmtInt(r.open_po_qty)} on PO</span>` : ''}</td>
+        <td class="r">${fmtDays(r.days_of_cover)}${r.days_of_cover === Infinity ? '<span class="sub">no sales</span>' : ''}</td>
+        <td class="r">${fmtInt(r.reorder_point)}</td>
+        <td class="r">${r.suggested_order > 0 ? fmtInt(r.suggested_order) : '<span style="color:var(--muted)">—</span>'}${r.suggested_order > 0 ? `<span class="sub">${fmtMoney(r.order_value)}</span>` : ''}</td>
+        <td><span class="status ${r.status.toLowerCase()}"><i class="dot ${r.status.toLowerCase()}"></i>${r.status}</span></td>
+      </tr>`).join('');
+  }
+  const value = rows.reduce((s, r) => s + r.order_value, 0);
+  $('tfoot').textContent = rows.length ? `${rows.length} SKU${rows.length === 1 ? '' : 's'} shown · suggested order value ${fmtMoney(value)}` : '';
+  $('count').textContent = state.rows.length ? `${rows.length} of ${state.rows.length}` : '';
+  $('export').disabled = !rows.length;
+
+  document.querySelectorAll('th[data-key]').forEach(th => {
+    const active = th.dataset.key === state.sortKey;
+    if (active) th.setAttribute('aria-sort', state.sortDir === 'asc' ? 'ascending' : 'descending'); else th.removeAttribute('aria-sort');
+    th.querySelector('.arrow').textContent = active && state.sortDir === 'desc' ? '▼' : '▲';
+  });
+}
+
+function render() { renderKPIs(); renderTable(); }
+
+function load(text, sourceName) {
+  const notice = $('notice'); notice.className = 'notice';
+  const { headers, records } = parseCSV(text);
+  const missing = REQUIRED.filter(h => !headers.includes(h));
+  if (missing.length) {
+    notice.className = 'notice error';
+    notice.textContent = `Could not load ${sourceName}: missing column${missing.length > 1 ? 's' : ''} ${missing.join(', ')}. Download the sample CSV to see the expected format.`;
+    return;
+  }
+  const { rows, skipped } = computeAll(records);
+  Object.assign(state, { rows, skipped, sourceName, status: '', search: '' });
+  $('search').value = ''; $('status-filter').value = '';
+  $('source').innerHTML = `Loaded <strong>${esc(sourceName)}</strong> · ${rows.length} SKUs`;
+  const flagged = rows.filter(r => r.flags.length).length;
+  const notes = [];
+  if (flagged) notes.push(`${flagged} row${flagged > 1 ? 's' : ''} had blank or invalid values (marked ⚠, hover for details)`);
+  if (skipped) notes.push(`${skipped} row${skipped > 1 ? 's' : ''} without a SKU skipped`);
+  notice.textContent = notes.join(' · ');
+  render();
+}
+
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- 5. Events ---------- */
+$('file-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => load(String(reader.result), file.name);
+  reader.readAsText(file);
+  e.target.value = '';
+});
+$('load-sample').addEventListener('click', () => load(SAMPLE_CSV, 'sample-inventory.csv'));
+$('download-sample').addEventListener('click', () => download('sample-inventory.csv', SAMPLE_CSV));
+
+$('export').addEventListener('click', () => {
+  const headers = ['sku','product_name','current_inventory','open_po_qty','inventory_position','avg_daily_sales','lead_time_days',
+                   'days_of_cover','lead_time_demand','safety_stock','reorder_point','moq','suggested_order','unit_cost','order_value','status','notes'];
+  const rows = visibleRows().map(r => ({
+    ...r,
+    days_of_cover: r.days_of_cover === Infinity ? '' : r.days_of_cover.toFixed(1),
+    lead_time_demand: r.lead_time_demand.toFixed(1),
+    reorder_point: r.reorder_point.toFixed(1),
+    order_value: r.order_value.toFixed(2),
+    notes: r.flags.join('; '),
+  }));
+  const base = (state.sourceName || 'inventory').replace(/\.csv$/i, '');
+  download(`${base}-plan${state.status ? '-' + state.status.toLowerCase() : ''}.csv`, toCSV(headers, rows));
+});
+
+$('search').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
+$('status-filter').addEventListener('change', e => { state.status = e.target.value; render(); });
+document.querySelectorAll('.kpi').forEach(b => b.addEventListener('click', () => {
+  state.status = b.dataset.status === state.status ? '' : b.dataset.status;
+  $('status-filter').value = state.status; render();
+}));
+document.querySelectorAll('th[data-key]').forEach(th => th.querySelector('button').addEventListener('click', () => {
+  const key = th.dataset.key;
+  if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  else { state.sortKey = key; state.sortDir = key === 'product_name' || key === 'sku' || key === 'status' ? 'asc' : 'desc'; }
+  renderTable();
+}));
+
+// Tabs
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+tabs.forEach(tab => tab.addEventListener('click', () => {
+  tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', String(on)); $(t.getAttribute('aria-controls')).hidden = !on; });
+}));
+
+// Start with the sample so the demo works immediately.
+load(SAMPLE_CSV, 'sample-inventory.csv');
+</script>
+<script>
+/* =====================================================================
+   Supplier Scorecard — same structure as the Inventory Planner:
+     1. Sample data   2. Scoring   3. State + rendering   4. Events
+   Reuses parseCSV, toCSV, num, download, esc and fmt helpers above.
+   ===================================================================== */
+(function () {
+
+/* ---------- 1. Sample data ---------- */
+const SAMPLE_SUPPLIERS_CSV = `supplier,annual_spend,otif_percent,defect_rate_percent,price_variance_percent,avg_response_hours
+Meridian Packaging Co.,1840000,96.5,0.8,1.2,6
+Northgate Corrugated,2210000,91.2,1.9,3.4,14
+Apex Pallet & Crate,640000,88.0,2.6,-1.5,9
+Sunbelt Plastics Ltd,975000,82.4,3.8,5.1,22
+Harbor Freight Lines,3100000,78.9,0.4,6.8,4
+Lakeside Labels Inc.,310000,97.8,0.3,0.0,3
+Ironwood Steel Products,1425000,84.6,4.2,2.9,30
+Crescent Adhesives,280000,93.1,1.1,1.8,10
+Pioneer Safety Supply,520000,89.7,2.2,-0.6,12
+Everline Logistics,2760000,71.3,0.2,9.4,36
+Redwood Fastener Group,395000,86.9,5.6,4.3,18
+Atlas Protective Films,715000,94.4,1.4,2.2,8
+Summit Industrial Rubber,460000,79.5,6.9,7.7,41
+Bluewater Cold Chain,1290000,90.8,0.9,3.9,7
+Keystone Tooling,860000,74.2,3.1,11.5,52
+Orion Electronics Supply,1130000,87.3,1.6,0.5,16
+Granite Ridge Timber,580000,92.6,2.0,-2.1,20
+Vector Print Solutions,240000,95.0,0.6,1.0,5
+Delta Wire & Cable,670000,,2.4,3.0,24
+Cobalt Chemicals,930000,83.8,n/a,4.6,11
+`;
+const REQUIRED = ['supplier','annual_spend','otif_percent','defect_rate_percent','price_variance_percent','avg_response_hours'];
+const DEFAULT_WEIGHTS = { delivery: 35, quality: 25, cost: 25, service: 15 };
+const DIMS = [
+  { key: 'delivery', label: 'Delivery', input: 'otif_percent',            unit: '% OTIF',        score: v => v },
+  { key: 'quality',  label: 'Quality',  input: 'defect_rate_percent',     unit: '% defects',     score: v => 100 - v * 10 },
+  { key: 'cost',     label: 'Cost',     input: 'price_variance_percent',  unit: '% variance',    score: v => 100 - Math.max(v, 0) * 10 },
+  { key: 'service',  label: 'Service',  input: 'avg_response_hours',      unit: 'h response',    score: v => 100 - v * (100 / 48) },
+];
+const RATINGS = ['Preferred', 'Acceptable', 'Watch', 'Critical'];
+const RATING_ORDER = { Preferred: 0, Acceptable: 1, Watch: 2, Critical: 3 };
+
+/* ---------- 2. Scoring ---------- */
+const clamp = x => Math.max(0, Math.min(100, x));
+const rate = s => s >= 85 ? 'Preferred' : s >= 70 ? 'Acceptable' : s >= 55 ? 'Watch' : 'Critical';
+
+// Signed number: price variance may legitimately be negative (favorable).
+function signedNum(raw, field) {
+  const s = String(raw ?? '').replace(/[,$\s%]/g, '');
+  if (s === '') return { value: 0, flag: `${field} blank → 0` };
+  const n = Number(s);
+  if (!Number.isFinite(n)) return { value: 0, flag: `${field} "${raw}" → 0` };
+  return { value: n, flag: null };
+}
+
+function scoreRow(rec, weights) {
+  const flags = [];
+  const take = (f, signed) => { const r = (signed ? signedNum : num)(rec[f], f); if (r.flag) flags.push(r.flag); return r.value; };
+  const row = { supplier: rec.supplier, annual_spend: take('annual_spend'), inputs: {}, flags };
+  let overall = 0;
+  for (const d of DIMS) {
+    const v = take(d.input, d.key === 'cost');
+    row.inputs[d.key] = v;
+    row[d.key] = clamp(d.score(v));
+    overall += row[d.key] * weights[d.key] / 100;
+  }
+  row.overall = overall;
+  row.rating = rate(overall);
+  return row;
+}
+
+function scoreAll(records, weights) {
+  const seen = new Set(); const rows = []; let skipped = 0;
+  for (const rec of records) {
+    if (!rec.supplier) { skipped++; continue; }
+    const row = scoreRow(rec, weights);
+    if (seen.has(row.supplier)) row.flags.push('duplicate supplier'); else seen.add(row.supplier);
+    rows.push(row);
+  }
+  rows.sort((a, b) => b.overall - a.overall || b.annual_spend - a.annual_spend);
+  rows.forEach((r, i) => r.rank = i + 1);
+  return { rows, skipped };
+}
+
+/* ---------- 3. State + rendering ---------- */
+const state = { records: [], rows: [], skipped: 0, sourceName: '', weights: { ...DEFAULT_WEIGHTS },
+                search: '', rating: '', sortKey: 'overall', sortDir: 'desc', selected: null };
+const fmtScore = n => n.toFixed(1);
+
+function readWeights() {
+  const w = {};
+  document.querySelectorAll('#weights input').forEach(i => w[i.dataset.w] = Math.max(0, Number(i.value) || 0));
+  const total = Object.values(w).reduce((a, b) => a + b, 0);
+  const el = $('w-total');
+  el.textContent = `Total ${total}%`;
+  el.className = 'total' + (total === 100 ? '' : ' bad');
+  el.title = total === 100 ? '' : 'Weights must add up to 100%';
+  return total === 100 ? w : null;
+}
+
+function recompute() {
+  const w = readWeights();
+  if (!w) { $('s-notice').className = 'notice error'; $('s-notice').textContent = 'Weights must add up to 100%. Scores below use the last valid weights.'; return; }
+  state.weights = w;
+  const { rows, skipped } = scoreAll(state.records, w);
+  state.rows = rows; state.skipped = skipped;
+  $('s-notice').className = 'notice';
+  const flagged = rows.filter(r => r.flags.length).length, notes = [];
+  if (flagged) notes.push(`${flagged} row${flagged > 1 ? 's' : ''} had blank or invalid values (marked ⚠, hover for details)`);
+  if (skipped) notes.push(`${skipped} row${skipped > 1 ? 's' : ''} without a supplier skipped`);
+  $('s-notice').textContent = notes.join(' · ') || 'Select a supplier to see what drove its score.';
+  render();
+}
+
+function visibleRows() {
+  const q = state.search.trim().toLowerCase();
+  const rows = state.rows.filter(r =>
+    (!state.rating || (state.rating === 'attention' ? (r.rating === 'Watch' || r.rating === 'Critical') : r.rating === state.rating)) &&
+    (!q || r.supplier.toLowerCase().includes(q)));
+  const k = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
+  rows.sort((a, b) => {
+    let av = a[k], bv = b[k];
+    if (k === 'rating') { av = RATING_ORDER[av]; bv = RATING_ORDER[bv]; }
+    const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+    return (cmp || a.rank - b.rank) * dir;
+  });
+  return rows;
+}
+
+function renderKPIs() {
+  const rows = state.rows, total = rows.length;
+  const counts = Object.fromEntries(RATINGS.map(r => [r, 0]));
+  rows.forEach(r => counts[r.rating]++);
+  const spend = rows.reduce((s, r) => s + r.annual_spend, 0);
+  $('s-total').textContent = fmtInt(total);
+  $('s-total-sub').textContent = total ? `${fmtMoney(spend)} annual spend` : 'Load a CSV to begin';
+  $('s-avg').textContent = total ? fmtScore(rows.reduce((s, r) => s + r.overall, 0) / total) : '—';
+  $('s-avg-w').textContent = total && spend ? fmtScore(rows.reduce((s, r) => s + r.overall * r.annual_spend, 0) / spend) : '—';
+  const top = rows[0];
+  $('s-top').textContent = top ? top.supplier : '—';
+  $('s-top-sub').textContent = top ? `Overall ${fmtScore(top.overall)} · ${top.rating}` : '';
+  $('s-attention').textContent = fmtInt(counts.Watch + counts.Critical);
+  $('s-strip').innerHTML = RATINGS.map(r => `<div class="${r.toLowerCase()}" style="flex:${counts[r]}"></div>`).join('');
+  $('s-legend').innerHTML = RATINGS.map(r => `<span><i class="dot ${r.toLowerCase()}"></i>${r} ${counts[r]}</span>`).join('');
+  document.querySelectorAll('.s-kpi').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rating === state.rating && b.id !== 's-kpi-avg' && b.id !== 's-kpi-top')));
+}
+
+function renderTable() {
+  const rows = visibleRows();
+  const tbody = $('s-tbody');
+  if (!state.rows.length) tbody.innerHTML = `<tr><td colspan="8" class="empty">No data yet. Upload a CSV or load the sample data.</td></tr>`;
+  else if (!rows.length) tbody.innerHTML = `<tr><td colspan="8" class="empty">No suppliers match the current filter.</td></tr>`;
+  else tbody.innerHTML = rows.map(r => `
+      <tr class="selectable${r.supplier === state.selected ? ' selected' : ''}" data-supplier="${esc(r.supplier)}" tabindex="0">
+        <td><span class="rank">${r.rank}</span>${esc(r.supplier)}${r.flags.length ? `<span class="flag" title="${esc(r.flags.join('; '))}">⚠</span>` : ''}</td>
+        <td class="r">${fmtMoney(r.annual_spend)}</td>
+        <td class="r">${fmtScore(r.cost)}</td>
+        <td class="r">${fmtScore(r.quality)}</td>
+        <td class="r">${fmtScore(r.delivery)}</td>
+        <td class="r">${fmtScore(r.service)}</td>
+        <td class="r"><strong>${fmtScore(r.overall)}</strong></td>
+        <td><span class="status rating ${r.rating.toLowerCase()}"><i class="dot ${r.rating.toLowerCase()}"></i>${r.rating}</span></td>
+      </tr>`).join('');
+  $('s-tfoot').textContent = rows.length ? `${rows.length} supplier${rows.length === 1 ? '' : 's'} shown · weights D ${state.weights.delivery} / Q ${state.weights.quality} / C ${state.weights.cost} / S ${state.weights.service}` : '';
+  $('s-count').textContent = state.rows.length ? `${rows.length} of ${state.rows.length}` : '';
+  $('s-export').disabled = !rows.length;
+  document.querySelectorAll('#s-table th[data-key]').forEach(th => {
+    const active = th.dataset.key === state.sortKey;
+    if (active) th.setAttribute('aria-sort', state.sortDir === 'asc' ? 'ascending' : 'descending'); else th.removeAttribute('aria-sort');
+    th.querySelector('.arrow').textContent = active && state.sortDir === 'desc' ? '▼' : '▲';
+  });
+}
+
+function renderDetail() {
+  const box = $('s-detail');
+  const r = state.rows.find(x => x.supplier === state.selected);
+  if (!r) { box.hidden = true; box.innerHTML = ''; return; }
+  const w = state.weights;
+  const parts = DIMS.map(d => ({ ...d, score: r[d.key], input: r.inputs[d.key], weight: w[d.key], points: r[d.key] * w[d.key] / 100, lost: (100 - r[d.key]) * w[d.key] / 100 }));
+  const best = [...parts].sort((a, b) => b.score - a.score)[0];
+  const worst = [...parts].sort((a, b) => b.lost - a.lost)[0];
+  const next = RATINGS[RATING_ORDER[r.rating] - 1];
+  const threshold = { Acceptable: 85, Watch: 70, Critical: 55 }[r.rating];
+  const gap = threshold ? threshold - r.overall : 0;
+  const fmtInput = p => p.key === 'service' ? `${p.input.toLocaleString('en-US', { maximumFractionDigits: 1 })} ${p.unit}` : `${p.input > 0 && p.key === 'cost' ? '+' : ''}${p.input.toLocaleString('en-US', { maximumFractionDigits: 1 })}${p.unit}`;
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="head">
+      <h2>${esc(r.supplier)}</h2>
+      <span class="status rating ${r.rating.toLowerCase()}"><i class="dot ${r.rating.toLowerCase()}"></i>${r.rating}</span>
+      <span class="score">${fmtScore(r.overall)}</span>
+      <span style="color:var(--muted);font-size:12.5px">Rank ${r.rank} of ${state.rows.length} · ${fmtMoney(r.annual_spend)} annual spend</span>
+      <button class="btn link close" id="s-detail-close">Close</button>
+    </div>
+    <table>
+      <thead><tr><th>Dimension</th><th>Input</th><th class="r">Score</th><th class="r">Weight</th><th class="r">Points</th><th>Points lost</th></tr></thead>
+      <tbody>${parts.map(p => `
+        <tr>
+          <td>${p.label}</td>
+          <td class="num">${fmtInput(p)}</td>
+          <td class="r">${fmtScore(p.score)}</td>
+          <td class="r">${p.weight}%</td>
+          <td class="r">${fmtScore(p.points)}</td>
+          <td><span class="bar"><i style="width:${Math.round(p.lost / Math.max(...parts.map(x => x.lost), 0.01) * 100)}%"></i></span><span class="num">${fmtScore(p.lost)}</span></td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td colspan="4">Overall score</td><td class="r num" style="color:var(--ink)"><strong>${fmtScore(r.overall)}</strong></td><td class="num">${fmtScore(100 - r.overall)}</td></tr></tfoot>
+    </table>
+    <div class="summary">
+      ${worst.lost > 0.05
+        ? `<strong>${worst.label}</strong> is the biggest drag, costing ${fmtScore(worst.lost)} points (${fmtInput(worst)} → score ${fmtScore(worst.score)} at ${worst.weight}% weight). `
+        : `Full marks on every dimension. `}
+      ${best !== worst ? `Strongest area is <strong>${best.label}</strong> at ${fmtScore(best.score)}. ` : ''}
+      ${next ? `Needs ${fmtScore(gap)} more points to reach ${next}. ` : 'Already in the top rating band. '}
+      ${r.flags.length ? `<br>⚠ Data notes: ${esc(r.flags.join('; '))}.` : ''}
+    </div>`;
+  $('s-detail-close').addEventListener('click', () => { state.selected = null; renderDetail(); renderTable(); });
+}
+
+function render() { renderKPIs(); renderTable(); renderDetail(); }
+
+function load(text, sourceName) {
+  const notice = $('s-notice');
+  const { headers, records } = parseCSV(text);
+  const missing = REQUIRED.filter(h => !headers.includes(h));
+  if (missing.length) {
+    notice.className = 'notice error';
+    notice.textContent = `Could not load ${sourceName}: missing column${missing.length > 1 ? 's' : ''} ${missing.join(', ')}. Download the sample CSV to see the expected format.`;
+    return;
+  }
+  Object.assign(state, { records, sourceName, search: '', rating: '', selected: null });
+  $('s-search').value = ''; $('s-rating-filter').value = '';
+  $('s-source').innerHTML = `Loaded <strong>${esc(sourceName)}</strong> · ${records.length} rows`;
+  recompute();
+}
+
+/* ---------- 4. Events ---------- */
+$('s-file-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => load(String(reader.result), file.name);
+  reader.readAsText(file); e.target.value = '';
+});
+$('s-load-sample').addEventListener('click', () => load(SAMPLE_SUPPLIERS_CSV, 'sample-suppliers.csv'));
+$('s-download-sample').addEventListener('click', () => download('sample-suppliers.csv', SAMPLE_SUPPLIERS_CSV));
+
+$('s-export').addEventListener('click', () => {
+  const headers = ['rank','supplier','annual_spend','otif_percent','defect_rate_percent','price_variance_percent','avg_response_hours',
+                   'delivery_score','quality_score','cost_score','service_score','overall_score','rating','notes'];
+  const rows = visibleRows().map(r => ({
+    rank: r.rank, supplier: r.supplier, annual_spend: r.annual_spend,
+    otif_percent: r.inputs.delivery, defect_rate_percent: r.inputs.quality, price_variance_percent: r.inputs.cost, avg_response_hours: r.inputs.service,
+    delivery_score: r.delivery.toFixed(1), quality_score: r.quality.toFixed(1), cost_score: r.cost.toFixed(1), service_score: r.service.toFixed(1),
+    overall_score: r.overall.toFixed(1), rating: r.rating, notes: r.flags.join('; '),
+  }));
+  const w = state.weights;
+  const tag = `d${w.delivery}-q${w.quality}-c${w.cost}-s${w.service}`;
+  download(`${(state.sourceName || 'suppliers').replace(/\.csv$/i, '')}-scorecard-${tag}.csv`, toCSV(headers, rows));
+});
+
+document.querySelectorAll('#weights input').forEach(i => i.addEventListener('input', recompute));
+$('w-reset').addEventListener('click', () => {
+  document.querySelectorAll('#weights input').forEach(i => i.value = DEFAULT_WEIGHTS[i.dataset.w]);
+  recompute();
+});
+
+$('s-search').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
+$('s-rating-filter').addEventListener('change', e => { state.rating = e.target.value; renderKPIs(); renderTable(); });
+document.querySelectorAll('.s-kpi').forEach(b => b.addEventListener('click', () => {
+  if (b.id === 's-kpi-avg') return;
+  if (b.id === 's-kpi-top') { if (state.rows[0]) { state.selected = state.rows[0].supplier; renderTable(); renderDetail(); $('s-detail').scrollIntoView({ block: 'nearest' }); } return; }
+  state.rating = b.dataset.rating === state.rating ? '' : b.dataset.rating;
+  $('s-rating-filter').value = state.rating === 'attention' ? '' : state.rating;
+  renderKPIs(); renderTable();
+}));
+document.querySelectorAll('#s-table th[data-key]').forEach(th => th.querySelector('button').addEventListener('click', () => {
+  const key = th.dataset.key;
+  if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  else { state.sortKey = key; state.sortDir = key === 'supplier' || key === 'rating' ? 'asc' : 'desc'; }
+  renderTable();
+}));
+const selectRow = tr => { state.selected = tr.dataset.supplier === state.selected ? null : tr.dataset.supplier; renderTable(); renderDetail(); if (state.selected) $('s-detail').scrollIntoView({ block: 'nearest' }); };
+$('s-tbody').addEventListener('click', e => { const tr = e.target.closest('tr.selectable'); if (tr) selectRow(tr); });
+$('s-tbody').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const tr = e.target.closest('tr.selectable'); if (tr) { e.preventDefault(); selectRow(tr); } } });
+
+load(SAMPLE_SUPPLIERS_CSV, 'sample-suppliers.csv');
+})();
+</script>
+</body>
+</html>
