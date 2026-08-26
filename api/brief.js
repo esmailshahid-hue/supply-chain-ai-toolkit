@@ -13,7 +13,8 @@
  *   POST /api/brief  -> { brief: "..." }           body: { tool, data }
  */
 
-const MODEL = process.env.BRIEF_MODEL || 'claude-sonnet-4-6';
+const API_URL = process.env.BRIEF_API_URL || 'https://api.deepseek.com/chat/completions';
+const MODEL = process.env.BRIEF_MODEL || 'deepseek-chat';
 const MAX_BODY = 30_000; // bytes — the payloads the app sends are ~2–8 KB
 const TOOLS = {
   inventory: 'Inventory Planner. Focus on stockout risk (Critical), reorder needs and overstock (cash tied up).',
@@ -53,7 +54,7 @@ function send(res, status, obj) {
 }
 
 module.exports = async function handler(req, res) {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = process.env.DEEP_SEEK_API_KEY || process.env.DEEPSEEK_API_KEY;
 
   if (req.method === 'GET') return send(res, 200, { enabled: Boolean(key) });
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
@@ -67,20 +68,23 @@ module.exports = async function handler(req, res) {
   if (json.length > MAX_BODY) return send(res, 413, { error: 'Payload too large' });
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const r = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 400,
         temperature: 0.2,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: `Tool: ${TOOLS[tool]}\n\nCalculated results (JSON):\n${json}` }],
+        stream: false,
+        messages: [
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: `Tool: ${TOOLS[tool]}\n\nCalculated results (JSON):\n${json}` },
+        ],
       }),
     });
     const out = await r.json();
     if (!r.ok) return send(res, 502, { error: out?.error?.message || `Model request failed (${r.status})` });
-    const brief = (out.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    const brief = (out.choices?.[0]?.message?.content || '').trim();
     if (!brief) return send(res, 502, { error: 'Empty response from model' });
     return send(res, 200, { brief, model: MODEL });
   } catch (e) {
