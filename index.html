@@ -195,6 +195,17 @@
   .kpi.static { cursor: default; }
   #f-table { font-size: 13px; } #f-table th, #f-table td { padding: 7px 9px; }
 
+  /* ---------- Column mapping (shared) ---------- */
+  .map-panel { border: 1px solid var(--line); border-radius: var(--radius); margin-top: 12px; padding: 12px 14px 14px; }
+  .map-panel h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; }
+  .map-panel .hint { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); }
+  .map-panel .rows { display: grid; grid-template-columns: minmax(140px, auto) 1fr; gap: 8px 12px; align-items: center; max-width: 480px; }
+  .map-panel .rows label { font-size: 13px; }
+  .map-panel .rows label .req { color: var(--critical); margin-left: 2px; }
+  .map-panel select { border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; background: var(--bg); width: 100%; }
+  .map-panel select.unresolved { border-color: var(--critical); }
+  .map-panel .actions { display: flex; gap: 8px; margin-top: 14px; }
+
   /* ---------- AI brief (shared) ---------- */
   .ai-btn[hidden] { display: none; }
   .brief { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); margin: 14px 0 0; padding: 10px 14px 12px; font-size: 13.5px; }
@@ -255,6 +266,8 @@
       <button class="btn ai-btn" id="ai-inventory" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
       <button class="btn" id="export" title="Exports the rows currently shown, with all calculated columns">Export results CSV</button>
     </div>
+
+    <div class="map-panel" id="map-panel" hidden></div>
 
     <div class="kpis" id="kpis" aria-label="Summary. Click a status to filter the table.">
       <button class="kpi" data-status="" aria-pressed="true">
@@ -363,6 +376,8 @@
       <button class="btn ai-btn" id="ai-freight" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
       <button class="btn" id="f-export" title="Exports the rows currently shown, with all calculated columns">Export exceptions CSV</button>
     </div>
+
+    <div class="map-panel" id="f-map-panel" hidden></div>
 
     <div class="kpis" aria-label="Summary. Click a status to filter the table.">
       <button class="kpi f-kpi" data-status="" aria-pressed="true">
@@ -477,6 +492,8 @@
       <button class="btn ai-btn" id="ai-supplier" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
       <button class="btn" id="s-export" title="Exports the rows currently shown, with all calculated columns">Export scorecard CSV</button>
     </div>
+
+    <div class="map-panel" id="s-map-panel" hidden></div>
 
     <div class="weights" id="weights">
       <span class="title">Weights</span>
@@ -639,7 +656,17 @@ SKU-1031,Ratchet Strap 2in x 27ft,55,,3.0,14,20,,12.80
 SKU-1032,Shrink Film Roll 20in,n/a,40,6.0,12,30,10,38.00
 `;
 
-const REQUIRED = ['sku','product_name','current_inventory','open_po_qty','avg_daily_sales','lead_time_days','safety_stock','moq','unit_cost'];
+const FIELDS = [
+  { key: 'sku', label: 'SKU', synonyms: ['sku', 'item', 'item_id', 'product_id', 'item_number', 'sku_number'] },
+  { key: 'product_name', label: 'Product Name', synonyms: ['product_name', 'product', 'item_name', 'description'] },
+  { key: 'current_inventory', label: 'Current Inventory', synonyms: ['current_inventory', 'inventory', 'stock', 'stock_on_hand', 'on_hand', 'quantity_on_hand'] },
+  { key: 'open_po_qty', label: 'Open PO Qty', synonyms: ['open_po_qty', 'open_po', 'incoming_inventory', 'incoming_qty', 'qty_on_order'] },
+  { key: 'avg_daily_sales', label: 'Average Daily Sales', synonyms: ['avg_daily_sales', 'daily_sales', 'avg_daily_demand', 'daily_demand', 'average_daily_usage'] },
+  { key: 'lead_time_days', label: 'Lead Time (days)', synonyms: ['lead_time_days', 'lead_time', 'replenishment_lead_time'] },
+  { key: 'safety_stock', label: 'Safety Stock', synonyms: ['safety_stock', 'buffer_stock'] },
+  { key: 'moq', label: 'MOQ', synonyms: ['moq', 'minimum_order_quantity', 'min_order_qty'] },
+  { key: 'unit_cost', label: 'Unit Cost', synonyms: ['unit_cost', 'cost', 'item_cost', 'purchase_cost'] },
+];
 
 /* ---------- 2. CSV parse / serialise (RFC 4180-ish, handles quotes) ---------- */
 function parseCSV(text) {
@@ -672,6 +699,108 @@ function toCSV(headers, rows) {
   const esc = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n');
 }
+
+/* ---------- Flexible column mapping (shared by all three tools) ----------
+   Uploaded CSVs rarely use our exact header names. This normalises headers
+   (case, spaces/underscores/hyphens) and matches them against a synonym list
+   per required field. A field auto-maps only if exactly one uploaded column
+   matches it; anything missing or matched by more than one column is left
+   for the user to resolve in a compact panel before analysis runs. */
+const ColumnMap = (() => {
+  const norm = s => String(s ?? '').toLowerCase().replace(/[\s_-]+/g, '');
+
+  // For each field, find every uploaded header whose normalised form matches one of its synonyms.
+  function candidatesFor(field, headers) {
+    const syns = field.synonyms.map(norm);
+    return headers.filter(h => syns.includes(norm(h)));
+  }
+
+  // Returns { mapping: {field: header|null}, unresolved: [field,...] }.
+  // mapping[field] is set only when exactly one uploaded column matches that field's synonyms.
+  function autoMap(fields, headers) {
+    const mapping = {}, unresolved = [];
+    for (const field of fields) {
+      const matches = candidatesFor(field, headers);
+      if (matches.length === 1) mapping[field.key] = matches[0];
+      else { mapping[field.key] = null; unresolved.push(field.key); }
+    }
+    return { mapping, unresolved };
+  }
+
+  // Renders the "Map your columns" panel into `panelEl` and resolves with the confirmed
+  // mapping ({field: header}) once the user clicks Analyze Data, or rejects on Cancel.
+  function prompt(panelEl, fields, headers, mapping) {
+    return new Promise((resolve, reject) => {
+      const options = ['<option value="">— Not mapped —</option>', ...headers.map(h => `<option value="${esc(h)}">${esc(h)}</option>`)].join('');
+      panelEl.innerHTML = `
+        <h3>Map your columns</h3>
+        <p class="hint">We couldn't confidently match every required column. Pick the right one for each field below.</p>
+        <div class="rows">
+          ${fields.map(f => `
+            <label for="map-${esc(f.key)}">${esc(f.label)}${f.required !== false ? '<span class="req">*</span>' : ''}</label>
+            <select id="map-${esc(f.key)}" data-field="${esc(f.key)}">${options}</select>
+          `).join('')}
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" id="map-cancel">Cancel</button>
+          <button type="button" class="btn primary" id="map-confirm">Analyze Data</button>
+        </div>`;
+      panelEl.hidden = false;
+      for (const f of fields) {
+        const sel = panelEl.querySelector(`#map-${f.key}`);
+        if (mapping[f.key]) sel.value = mapping[f.key];
+      }
+      const markUnresolved = () => {
+        let ok = true;
+        for (const f of fields) {
+          if (f.required === false) continue;
+          const sel = panelEl.querySelector(`#map-${f.key}`);
+          const bad = !sel.value;
+          sel.classList.toggle('unresolved', bad);
+          if (bad) ok = false;
+        }
+        return ok;
+      };
+      markUnresolved();
+      panelEl.querySelectorAll('select').forEach(sel => sel.addEventListener('change', markUnresolved));
+      panelEl.querySelector('#map-cancel').addEventListener('click', () => { panelEl.hidden = true; panelEl.innerHTML = ''; reject(new Error('cancelled')); });
+      panelEl.querySelector('#map-confirm').addEventListener('click', () => {
+        if (!markUnresolved()) return;
+        const result = {};
+        for (const f of fields) { const sel = panelEl.querySelector(`#map-${f.key}`); result[f.key] = sel.value || null; }
+        panelEl.hidden = true; panelEl.innerHTML = '';
+        resolve(result);
+      });
+    });
+  }
+
+  // Renames columns in `records` from uploaded headers to our internal field keys, per `mapping`.
+  function applyMapping(records, mapping) {
+    return records.map(rec => {
+      const out = {};
+      for (const [field, header] of Object.entries(mapping)) out[field] = header ? (rec[header] ?? '') : '';
+      return out;
+    });
+  }
+
+  // Top-level entry point used by each tool's load(). `fields` is an ordered list of
+  // {key, label, synonyms, required}. Returns the mapped records, running the panel only
+  // when needed (exact expected headers, or fully confident auto-match, skip it entirely).
+  async function resolve(panelEl, fields, headers, records) {
+    const exact = fields.every(f => headers.includes(f.key));
+    if (exact) {
+      const mapping = Object.fromEntries(fields.map(f => [f.key, f.key]));
+      return applyMapping(records, mapping);
+    }
+    const { mapping, unresolved } = autoMap(fields, headers);
+    const requiredUnresolved = unresolved.filter(k => fields.find(f => f.key === k).required !== false);
+    if (!requiredUnresolved.length) return applyMapping(records, mapping);
+    const confirmed = await prompt(panelEl, fields, headers, mapping);
+    return applyMapping(records, confirmed);
+  }
+
+  return { resolve };
+})();
 
 /* ---------- 3. Calculations ---------- */
 // Parse a number safely. Returns { value, flag } where flag explains any correction.
@@ -811,16 +940,19 @@ function renderTable() {
 
 function render() { renderKPIs(); renderTable(); }
 
-function load(text, sourceName) {
+async function load(text, sourceName) {
   const notice = $('notice'); notice.className = 'notice';
+  $('map-panel').hidden = true; $('map-panel').innerHTML = '';
   const { headers, records } = parseCSV(text);
-  const missing = REQUIRED.filter(h => !headers.includes(h));
-  if (missing.length) {
+  if (!headers.length) {
     notice.className = 'notice error';
-    notice.textContent = `Could not load ${sourceName}: missing column${missing.length > 1 ? 's' : ''} ${missing.join(', ')}. Download the sample CSV to see the expected format.`;
+    notice.textContent = `Could not load ${sourceName}: the file appears to be empty.`;
     return;
   }
-  const { rows, skipped } = computeAll(records);
+  let mapped;
+  try { mapped = await ColumnMap.resolve($('map-panel'), FIELDS, headers, records); }
+  catch { notice.textContent = 'Column mapping cancelled.'; return; }
+  const { rows, skipped } = computeAll(mapped);
   Object.assign(state, { rows, skipped, sourceName, status: '', search: '' });
   $('search').value = ''; $('status-filter').value = '';
   $('source').innerHTML = `Loaded <strong>${esc(sourceName)}</strong> · ${rows.length} SKUs`;
@@ -979,7 +1111,14 @@ Vector Print Solutions,240000,95.0,0.6,1.0,5
 Delta Wire & Cable,670000,,2.4,3.0,24
 Cobalt Chemicals,930000,83.8,n/a,4.6,11
 `;
-const REQUIRED = ['supplier','annual_spend','otif_percent','defect_rate_percent','price_variance_percent','avg_response_hours'];
+const FIELDS = [
+  { key: 'supplier', label: 'Supplier', synonyms: ['supplier', 'supplier_name', 'vendor', 'vendor_name'] },
+  { key: 'annual_spend', label: 'Annual Spend', synonyms: ['annual_spend', 'spend', 'supplier_spend', 'yearly_spend'], required: false },
+  { key: 'otif_percent', label: 'OTIF %', synonyms: ['otif_percent', 'otif', 'on_time_in_full', 'delivery_performance'] },
+  { key: 'defect_rate_percent', label: 'Defect Rate %', synonyms: ['defect_rate_percent', 'defect_rate', 'quality_defect_rate'] },
+  { key: 'price_variance_percent', label: 'Price Variance %', synonyms: ['price_variance_percent', 'price_variance', 'purchase_price_variance', 'ppv'] },
+  { key: 'avg_response_hours', label: 'Avg Response (hours)', synonyms: ['avg_response_hours', 'response_hours', 'response_time_hours', 'average_response_time'] },
+];
 const DEFAULT_WEIGHTS = { delivery: 35, quality: 25, cost: 25, service: 15 };
 const DIMS = [
   { key: 'delivery', label: 'Delivery', input: 'otif_percent',            unit: '% OTIF',        score: v => v },
@@ -1230,18 +1369,21 @@ function renderDetail() {
 
 function render() { renderKPIs(); renderTable(); renderDetail(); }
 
-function load(text, sourceName) {
+async function load(text, sourceName) {
   const notice = $('s-notice');
+  $('s-map-panel').hidden = true; $('s-map-panel').innerHTML = '';
   const { headers, records } = parseCSV(text);
-  const missing = REQUIRED.filter(h => !headers.includes(h));
-  if (missing.length) {
+  if (!headers.length) {
     notice.className = 'notice error';
-    notice.textContent = `Could not load ${sourceName}: missing column${missing.length > 1 ? 's' : ''} ${missing.join(', ')}. Download the sample CSV to see the expected format.`;
+    notice.textContent = `Could not load ${sourceName}: the file appears to be empty.`;
     return;
   }
-  Object.assign(state, { records, sourceName, search: '', rating: '', selected: null });
+  let mapped;
+  try { mapped = await ColumnMap.resolve($('s-map-panel'), FIELDS, headers, records); }
+  catch { notice.className = 'notice'; notice.textContent = 'Column mapping cancelled.'; return; }
+  Object.assign(state, { records: mapped, sourceName, search: '', rating: '', selected: null });
   $('s-search').value = ''; $('s-rating-filter').value = '';
-  $('s-source').innerHTML = `Loaded <strong>${esc(sourceName)}</strong> · ${records.length} rows`;
+  $('s-source').innerHTML = `Loaded <strong>${esc(sourceName)}</strong> · ${mapped.length} rows`;
   recompute();
 }
 
@@ -1376,7 +1518,17 @@ SHP-24121,"Newark, NJ","Columbus, OH",Northstar Transport,533,1254.39,2026-08-14
 SHP-24144,"Houston, TX","Memphis, TN",Northstar Transport,n/a,1340.0,2026-08-15,2026-08-17,2026-08-17
 SHP-24143,"Seattle, WA","Denver, CO",Harbor Freight Lines,1316,2610.5,2026-08-18,2026-08-22,
 `;
-const REQUIRED = ['shipment_id','origin','destination','carrier','distance_miles','freight_cost','ship_date','promised_delivery_date','actual_delivery_date'];
+const FIELDS = [
+  { key: 'shipment_id', label: 'Shipment ID', synonyms: ['shipment_id', 'shipment', 'load_id', 'tracking_id'] },
+  { key: 'origin', label: 'Origin', synonyms: ['origin', 'ship_from', 'origin_location'] },
+  { key: 'destination', label: 'Destination', synonyms: ['destination', 'ship_to', 'destination_location'] },
+  { key: 'carrier', label: 'Carrier', synonyms: ['carrier', 'transport_provider', 'logistics_provider'] },
+  { key: 'distance_miles', label: 'Distance (miles)', synonyms: ['distance_miles', 'distance', 'miles'] },
+  { key: 'freight_cost', label: 'Freight Cost', synonyms: ['freight_cost', 'shipping_cost', 'transport_cost', 'shipment_cost'] },
+  { key: 'ship_date', label: 'Ship Date', synonyms: ['ship_date', 'shipped_date', 'dispatch_date'] },
+  { key: 'promised_delivery_date', label: 'Promised Delivery Date', synonyms: ['promised_delivery_date', 'expected_delivery_date', 'promised_date'] },
+  { key: 'actual_delivery_date', label: 'Actual Delivery Date', synonyms: ['actual_delivery_date', 'delivery_date', 'delivered_date'], required: false },
+];
 const STATUSES = ['Critical', 'High Cost', 'Late', 'Normal'];
 const STATUS_ORDER = { 'Critical': 0, 'High Cost': 1, 'Late': 2, 'Normal': 3 };
 const cls = s => s.toLowerCase().replace(' ', '');
@@ -1532,16 +1684,19 @@ function renderTable() {
 
 function render() { renderKPIs(); renderTable(); }
 
-function load(text, sourceName) {
+async function load(text, sourceName) {
   const notice = $('f-notice'); notice.className = 'notice';
+  $('f-map-panel').hidden = true; $('f-map-panel').innerHTML = '';
   const { headers, records } = parseCSV(text);
-  const missing = REQUIRED.filter(h => !headers.includes(h));
-  if (missing.length) {
+  if (!headers.length) {
     notice.className = 'notice error';
-    notice.textContent = `Could not load ${sourceName}: missing column${missing.length > 1 ? 's' : ''} ${missing.join(', ')}. Download the sample CSV to see the expected format.`;
+    notice.textContent = `Could not load ${sourceName}: the file appears to be empty.`;
     return;
   }
-  const { rows, skipped } = buildRows(records);
+  let mapped;
+  try { mapped = await ColumnMap.resolve($('f-map-panel'), FIELDS, headers, records); }
+  catch { notice.textContent = 'Column mapping cancelled.'; return; }
+  const { rows, skipped } = buildRows(mapped);
   // Open on the exceptions: that is what the tool is for. 'All statuses' is one click away.
   Object.assign(state, { rows, skipped, sourceName, search: '', status: 'flagged', carrier: '', lane: '', sortKey: 'excess', sortDir: 'desc' });
   $('f-search').value = ''; $('f-status-filter').value = 'flagged';
