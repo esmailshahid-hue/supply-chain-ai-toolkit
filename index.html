@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Supply Chain AI Toolkit</title>
-<meta name="description" content="Practical supply-chain analytics tools built with AI-assisted coding. Inventory planning, freight exceptions and supplier scorecards — all processed in your browser.">
+<meta name="description" content="Practical supply-chain analytics tools built with AI-assisted coding. Inventory planning, freight exceptions and supplier scorecards — CSV parsing and calculations run in your browser; the optional AI Brief sends only calculated results when requested.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -161,8 +161,10 @@
   .rating.acceptable { color: var(--overstock); background: var(--overstock-bg); }
   .rating.watch      { color: var(--reorder);   background: var(--reorder-bg); }
   .rating.critical   { color: var(--critical);  background: var(--critical-bg); }
+  .rating.incomplete { color: var(--muted);     background: var(--panel); }
   .dot.preferred { background: var(--healthy); } .dot.acceptable { background: var(--overstock); }
   .dot.watch { background: var(--reorder); }
+  .dot.incomplete { background: var(--muted); }
   .strip .preferred { background: var(--healthy); } .strip .acceptable { background: var(--overstock); }
   .strip .watch { background: var(--reorder); }
   tbody tr.selectable { cursor: pointer; }
@@ -226,7 +228,7 @@
   <div class="wrap">
     <div class="masthead">
       <h1>Supply Chain AI Toolkit <span>Practical analytics tools, built with AI-assisted coding</span></h1>
-      <div class="meta">Runs entirely in your browser · no data is uploaded · <a href="https://github.com/esmailshahid-hue/supply-chain-ai-toolkit" target="_blank" rel="noopener">Source on GitHub</a></div>
+      <div class="meta">CSV processing stays in your browser · AI Brief sends calculated results only when requested · <a href="https://github.com/esmailshahid-hue/supply-chain-ai-toolkit" target="_blank" rel="noopener">Source on GitHub</a></div>
     </div>
     <nav role="tablist" aria-label="Tools">
       <button role="tab" id="tab-inventory" aria-controls="panel-inventory" aria-selected="true">Inventory Planner</button>
@@ -521,6 +523,7 @@
         <option>Acceptable</option>
         <option>Watch</option>
         <option>Critical</option>
+        <option>Incomplete</option>
       </select>
       <span class="count" id="s-count"></span>
     </div>
@@ -566,16 +569,19 @@
             <dt>Acceptable</dt><dd>70 – 84.99</dd>
             <dt>Watch</dt><dd>55 – 69.99</dd>
             <dt>Critical</dt><dd>&lt; 55</dd>
+            <dt>Incomplete</dt><dd>one or more required metrics missing or invalid — not scored</dd>
           </dl>
         </div>
         <div>
           <h3>Data handling</h3>
           <ul>
             <li>Expected columns: <span class="num">supplier, annual_spend, otif_percent, defect_rate_percent, price_variance_percent, avg_response_hours</span>. Header matching is case-insensitive.</li>
-            <li>Blank or non-numeric values are treated as 0 and the row is flagged (⚠). A blank OTIF therefore scores 0 on delivery; a blank defect rate scores 100 on quality. Check flagged rows before acting on them.</li>
-            <li>Price variance may be negative (favorable). Other fields are clamped at 0.</li>
+            <li>The four scoring metrics (otif_percent, defect_rate_percent, price_variance_percent, avg_response_hours) must each be present and numeric. If any is blank, non-numeric, or invalid, the supplier is marked <strong>Incomplete</strong>: no overall score or rating is calculated, and it's excluded from rank, average score, spend-weighted average, and highest-rated. It stays visible in the table with the missing field(s) named (hover the ⚠).</li>
+            <li>Price variance may legitimately be negative (favorable pricing) — this is valid, not missing. Otherwise-valid zero values (e.g. 0% defects) are scored normally and are not treated as missing.</li>
+            <li>otif_percent, defect_rate_percent, and avg_response_hours must be ≥ 0 to be valid; a negative value there is treated as invalid (Incomplete), not clamped to 0.</li>
+            <li>annual_spend is not a required scoring metric — a blank or invalid spend is treated as $0 and doesn't affect completeness.</li>
             <li>Rows without a supplier name are skipped. Duplicate names are kept and flagged.</li>
-            <li>Ranking is by overall score, ties broken by annual spend.</li>
+            <li>Ranking is by overall score among scored suppliers only, ties broken by annual spend.</li>
           </ul>
         </div>
       </div>
@@ -769,7 +775,7 @@ function renderKPIs() {
   $('strip').innerHTML = STATUSES.map(s => `<div class="${s.toLowerCase()}" style="flex:${counts[s]}"></div>`).join('');
   $('legend').innerHTML = STATUSES.map(s =>
     `<span><i class="dot ${s.toLowerCase()}"></i>${s} ${counts[s]}</span>`).join('');
-  document.querySelectorAll('.kpi').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.status === state.status)));
+  document.querySelectorAll('#kpis .kpi').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.status === state.status)));
 }
 
 function renderTable() {
@@ -796,7 +802,7 @@ function renderTable() {
   $('count').textContent = state.rows.length ? `${rows.length} of ${state.rows.length}` : '';
   $('export').disabled = !rows.length;
 
-  document.querySelectorAll('th[data-key]').forEach(th => {
+  document.querySelectorAll('#table th[data-key]').forEach(th => {
     const active = th.dataset.key === state.sortKey;
     if (active) th.setAttribute('aria-sort', state.sortDir === 'asc' ? 'ascending' : 'descending'); else th.removeAttribute('aria-sort');
     th.querySelector('.arrow').textContent = active && state.sortDir === 'desc' ? '▼' : '▲';
@@ -916,11 +922,11 @@ $('export').addEventListener('click', () => {
 
 $('search').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
 $('status-filter').addEventListener('change', e => { state.status = e.target.value; render(); });
-document.querySelectorAll('.kpi').forEach(b => b.addEventListener('click', () => {
+document.querySelectorAll('#kpis .kpi').forEach(b => b.addEventListener('click', () => {
   state.status = b.dataset.status === state.status ? '' : b.dataset.status;
   $('status-filter').value = state.status; render();
 }));
-document.querySelectorAll('th[data-key]').forEach(th => th.querySelector('button').addEventListener('click', () => {
+document.querySelectorAll('#table th[data-key]').forEach(th => th.querySelector('button').addEventListener('click', () => {
   const key = th.dataset.key;
   if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
   else { state.sortKey = key; state.sortDir = key === 'product_name' || key === 'sku' || key === 'status' ? 'asc' : 'desc'; }
@@ -982,34 +988,54 @@ const DIMS = [
   { key: 'service',  label: 'Service',  input: 'avg_response_hours',      unit: 'h response',    score: v => 100 - v * (100 / 48) },
 ];
 const RATINGS = ['Preferred', 'Acceptable', 'Watch', 'Critical'];
-const RATING_ORDER = { Preferred: 0, Acceptable: 1, Watch: 2, Critical: 3 };
+const RATING_ORDER = { Preferred: 0, Acceptable: 1, Watch: 2, Critical: 3, Incomplete: 4 };
 
 /* ---------- 2. Scoring ---------- */
 const clamp = x => Math.max(0, Math.min(100, x));
 const rate = s => s >= 85 ? 'Preferred' : s >= 70 ? 'Acceptable' : s >= 55 ? 'Watch' : 'Critical';
 
-// Accepts "96.5%", "$1,200" etc. Price variance may legitimately be negative (favorable); other fields are clamped at 0.
+// Accepts "96.5%", "$1,200" etc. Price variance may legitimately be negative (favorable); other fields are invalid if negative.
+// valid: false means the metric is missing/invalid and the row cannot be scored — 0 is never used as a silent substitute.
 function metric(raw, field, signed) {
   const s = String(raw ?? '').replace(/[,$\s%]/g, '');
-  if (s === '') return { value: 0, flag: `${field} blank → 0` };
+  if (s === '') return { value: null, valid: false, flag: `${field} missing` };
   const n = Number(s);
-  if (!Number.isFinite(n)) return { value: 0, flag: `${field} "${raw}" → 0` };
-  if (n < 0 && !signed) return { value: 0, flag: `${field} negative → 0` };
-  return { value: n, flag: null };
+  if (!Number.isFinite(n)) return { value: null, valid: false, flag: `${field} "${raw}" is not a number` };
+  if (n < 0 && !signed) return { value: null, valid: false, flag: `${field} cannot be negative` };
+  return { value: n, valid: true, flag: null };
 }
 
 function scoreRow(rec, weights) {
   const flags = [];
-  const take = (f, signed) => { const r = metric(rec[f], f, signed); if (r.flag) flags.push(r.flag); return r.value; };
-  const row = { supplier: rec.supplier, annual_spend: take('annual_spend'), inputs: {}, flags };
+  // annual_spend isn't a required scoring metric — an invalid value doesn't make the supplier Incomplete, it just reads as 0 spend.
+  const spendMetric = metric(rec.annual_spend, 'annual_spend');
+  if (spendMetric.flag) flags.push(spendMetric.flag);
+  const row = { supplier: rec.supplier, annual_spend: spendMetric.valid ? spendMetric.value : 0, inputs: {}, flags };
+
+  const missing = [];
   let overall = 0;
   for (const d of DIMS) {
-    const v = take(d.input, d.key === 'cost');
-    if (d.key === 'delivery' && v > 100) flags.push(`otif_percent ${v} → capped at 100`);
-    row.inputs[d.key] = v;
-    row[d.key] = clamp(d.score(v));
+    const m = metric(rec[d.input], d.input, d.key === 'cost');
+    if (m.flag) flags.push(m.flag);
+    if (!m.valid) { missing.push(d.input); row.inputs[d.key] = null; continue; }
+    if (d.key === 'delivery' && m.value > 100) flags.push(`otif_percent ${m.value} → capped at 100`);
+    row.inputs[d.key] = m.value;
+  }
+
+  if (missing.length) {
+    row.incomplete = true;
+    row.missingFields = missing;
+    row.overall = null;
+    row.rating = 'Incomplete';
+    for (const d of DIMS) row[d.key] = null;
+    return row;
+  }
+
+  for (const d of DIMS) {
+    row[d.key] = clamp(d.score(row.inputs[d.key]));
     overall += row[d.key] * weights[d.key] / 100;
   }
+  row.incomplete = false;
   row.overall = overall;
   row.rating = rate(overall);
   return row;
@@ -1023,8 +1049,14 @@ function scoreAll(records, weights) {
     if (seen.has(row.supplier)) row.flags.push('duplicate supplier'); else seen.add(row.supplier);
     rows.push(row);
   }
-  rows.sort((a, b) => b.overall - a.overall || b.annual_spend - a.annual_spend);
-  rows.forEach((r, i) => r.rank = i + 1);
+  // Rank only scored suppliers — Incomplete rows are excluded from ranked position but stay visible in the table.
+  rows.sort((a, b) => {
+    if (a.incomplete !== b.incomplete) return a.incomplete ? 1 : -1;
+    if (a.incomplete) return 0;
+    return b.overall - a.overall || b.annual_spend - a.annual_spend;
+  });
+  let nextRank = 1;
+  rows.forEach(r => { r.rank = r.incomplete ? null : nextRank++; });
   return { rows, skipped };
 }
 
@@ -1052,8 +1084,10 @@ function recompute() {
   const { rows, skipped } = scoreAll(state.records, w);
   state.rows = rows; state.skipped = skipped;
   $('s-notice').className = 'notice';
-  const flagged = rows.filter(r => r.flags.length).length, notes = [];
-  if (flagged) notes.push(`${flagged} row${flagged > 1 ? 's' : ''} had blank or invalid values (marked ⚠, hover for details)`);
+  const incomplete = rows.filter(r => r.incomplete).length;
+  const flagged = rows.filter(r => r.flags.length && !r.incomplete).length, notes = [];
+  if (incomplete) notes.push(`${incomplete} supplier${incomplete > 1 ? 's' : ''} marked Incomplete — missing or invalid required metric(s), excluded from scoring and averages (marked ⚠, hover for details)`);
+  if (flagged) notes.push(`${flagged} row${flagged > 1 ? 's' : ''} had other data notes (marked ⚠, hover for details)`);
   if (skipped) notes.push(`${skipped} row${skipped > 1 ? 's' : ''} without a supplier skipped`);
   $('s-notice').textContent = notes.join(' · ') || 'Select a supplier to see what drove its score.';
   render();
@@ -1066,6 +1100,9 @@ function visibleRows() {
     (!q || r.supplier.toLowerCase().includes(q)));
   const k = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
   rows.sort((a, b) => {
+    // Incomplete rows have no score — always sort them after scored rows, regardless of sort column/direction.
+    if (a.incomplete !== b.incomplete) return a.incomplete ? 1 : -1;
+    if (a.incomplete) return a.supplier.localeCompare(b.supplier);
     let av = a[k], bv = b[k];
     if (k === 'rating') { av = RATING_ORDER[av]; bv = RATING_ORDER[bv]; }
     const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
@@ -1076,14 +1113,17 @@ function visibleRows() {
 
 function renderKPIs() {
   const rows = state.rows, total = rows.length;
+  const scored = rows.filter(r => !r.incomplete);
   const counts = Object.fromEntries(RATINGS.map(r => [r, 0]));
-  rows.forEach(r => counts[r.rating]++);
+  scored.forEach(r => counts[r.rating]++);
+  // Spend total covers every visible supplier; scoring averages and the top-rated pick use only scored (non-Incomplete) suppliers.
   const spend = rows.reduce((s, r) => s + r.annual_spend, 0);
+  const scoredSpend = scored.reduce((s, r) => s + r.annual_spend, 0);
   $('s-total').textContent = fmtInt(total);
   $('s-total-sub').textContent = total ? `${fmtMoney(spend)} annual spend` : 'Load a CSV to begin';
-  $('s-avg').textContent = total ? fmtScore(rows.reduce((s, r) => s + r.overall, 0) / total) : '—';
-  $('s-avg-w').textContent = total && spend ? fmtScore(rows.reduce((s, r) => s + r.overall * r.annual_spend, 0) / spend) : '—';
-  const top = rows[0];
+  $('s-avg').textContent = scored.length ? fmtScore(scored.reduce((s, r) => s + r.overall, 0) / scored.length) : '—';
+  $('s-avg-w').textContent = scored.length && scoredSpend ? fmtScore(scored.reduce((s, r) => s + r.overall * r.annual_spend, 0) / scoredSpend) : '—';
+  const top = scored[0];
   $('s-top').textContent = top ? top.supplier : '—';
   $('s-top-sub').textContent = top ? `Overall ${fmtScore(top.overall)} · ${top.rating}` : '';
   $('s-attention').textContent = fmtInt(counts.Watch + counts.Critical);
@@ -1097,17 +1137,23 @@ function renderTable() {
   const tbody = $('s-tbody');
   if (!state.rows.length) tbody.innerHTML = `<tr><td colspan="8" class="empty">No data yet. Upload a CSV or load the sample data.</td></tr>`;
   else if (!rows.length) tbody.innerHTML = `<tr><td colspan="8" class="empty">No suppliers match the current filter.</td></tr>`;
-  else tbody.innerHTML = rows.map(r => `
+  else tbody.innerHTML = rows.map(r => {
+      const dash = '<span style="color:var(--muted)">—</span>';
+      const flagTitle = r.incomplete
+        ? `Incomplete: missing/invalid ${r.missingFields.join(', ')}. Excluded from scoring, averages and rank.`
+        : esc(r.flags.join('; '));
+      return `
       <tr class="selectable${r.supplier === state.selected ? ' selected' : ''}" data-supplier="${esc(r.supplier)}" tabindex="0">
-        <td><span class="rank">${r.rank}</span>${esc(r.supplier)}${r.flags.length ? `<span class="flag" title="${esc(r.flags.join('; '))}">⚠</span>` : ''}</td>
+        <td><span class="rank">${r.rank ?? '—'}</span>${esc(r.supplier)}${r.flags.length || r.incomplete ? `<span class="flag" title="${flagTitle}">⚠</span>` : ''}</td>
         <td class="r">${fmtMoney(r.annual_spend)}</td>
-        <td class="r">${fmtScore(r.cost)}</td>
-        <td class="r">${fmtScore(r.quality)}</td>
-        <td class="r">${fmtScore(r.delivery)}</td>
-        <td class="r">${fmtScore(r.service)}</td>
-        <td class="r"><strong>${fmtScore(r.overall)}</strong></td>
+        <td class="r">${r.incomplete ? dash : fmtScore(r.cost)}</td>
+        <td class="r">${r.incomplete ? dash : fmtScore(r.quality)}</td>
+        <td class="r">${r.incomplete ? dash : fmtScore(r.delivery)}</td>
+        <td class="r">${r.incomplete ? dash : fmtScore(r.service)}</td>
+        <td class="r"><strong>${r.incomplete ? dash : fmtScore(r.overall)}</strong></td>
         <td><span class="status rating ${r.rating.toLowerCase()}"><i class="dot ${r.rating.toLowerCase()}"></i>${r.rating}</span></td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   $('s-tfoot').textContent = rows.length ? `${rows.length} supplier${rows.length === 1 ? '' : 's'} shown · weights D ${state.weights.delivery} / Q ${state.weights.quality} / C ${state.weights.cost} / S ${state.weights.service}` : '';
   $('s-count').textContent = state.rows.length ? `${rows.length} of ${state.rows.length}` : '';
   $('s-export').disabled = !rows.length;
@@ -1122,6 +1168,24 @@ function renderDetail() {
   const box = $('s-detail');
   const r = state.rows.find(x => x.supplier === state.selected);
   if (!r) { box.hidden = true; box.innerHTML = ''; return; }
+  if (r.incomplete) {
+    box.hidden = false;
+    box.innerHTML = `
+    <div class="head">
+      <h2>${esc(r.supplier)}</h2>
+      <span class="status rating incomplete"><i class="dot incomplete"></i>Incomplete</span>
+      <span style="color:var(--muted);font-size:12.5px">${fmtMoney(r.annual_spend)} annual spend · not ranked</span>
+      <button class="btn link close" id="s-detail-close">Close</button>
+    </div>
+    <div class="summary">
+      This supplier is missing or has invalid values for: <strong>${esc(r.missingFields.join(', '))}</strong>.
+      An overall score, rating, and rank cannot be calculated until all required metrics (otif_percent, defect_rate_percent, price_variance_percent, avg_response_hours) are present and valid.
+      This supplier is excluded from average-score, spend-weighted average, and highest-rated calculations.
+      ${r.flags.length ? `<br>⚠ Data notes: ${esc(r.flags.join('; '))}.` : ''}
+    </div>`;
+    $('s-detail-close').addEventListener('click', () => { state.selected = null; renderDetail(); renderTable(); });
+    return;
+  }
   const w = state.weights;
   const parts = DIMS.map(d => ({ ...d, score: r[d.key], input: r.inputs[d.key], weight: w[d.key], points: r[d.key] * w[d.key] / 100, lost: (100 - r[d.key]) * w[d.key] / 100 }));
   const best = [...parts].sort((a, b) => b.score - a.score)[0];
@@ -1194,11 +1258,14 @@ $('s-download-sample').addEventListener('click', () => download('sample-supplier
 $('s-export').addEventListener('click', () => {
   const headers = ['rank','supplier','annual_spend','otif_percent','defect_rate_percent','price_variance_percent','avg_response_hours',
                    'delivery_score','quality_score','cost_score','service_score','overall_score','rating','notes'];
+  const n = v => v === null || v === undefined ? '' : v;
+  const s = v => v === null || v === undefined ? '' : v.toFixed(1);
   const rows = visibleRows().map(r => ({
-    rank: r.rank, supplier: r.supplier, annual_spend: r.annual_spend,
-    otif_percent: r.inputs.delivery, defect_rate_percent: r.inputs.quality, price_variance_percent: r.inputs.cost, avg_response_hours: r.inputs.service,
-    delivery_score: r.delivery.toFixed(1), quality_score: r.quality.toFixed(1), cost_score: r.cost.toFixed(1), service_score: r.service.toFixed(1),
-    overall_score: r.overall.toFixed(1), rating: r.rating, notes: r.flags.join('; '),
+    rank: r.rank ?? '', supplier: r.supplier, annual_spend: r.annual_spend,
+    otif_percent: n(r.inputs.delivery), defect_rate_percent: n(r.inputs.quality), price_variance_percent: n(r.inputs.cost), avg_response_hours: n(r.inputs.service),
+    delivery_score: s(r.delivery), quality_score: s(r.quality), cost_score: s(r.cost), service_score: s(r.service),
+    overall_score: s(r.overall), rating: r.rating,
+    notes: r.incomplete ? `Incomplete: missing/invalid ${r.missingFields.join(', ')}` : r.flags.join('; '),
   }));
   const w = state.weights;
   const tag = `d${w.delivery}-q${w.quality}-c${w.cost}-s${w.service}`;
@@ -1233,6 +1300,7 @@ $('s-tbody').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key =
 AI.wire('supplier', () => {
   if (!state.rows.length) return null;
   const rows = state.rows, w = state.weights;
+  const scored = rows.filter(r => !r.incomplete);
   const one = n => +n.toFixed(1);
   const weakest = r => DIMS.map(d => ({ label: d.label, lost: (100 - r[d.key]) * w[d.key] / 100 })).sort((a, b) => b.lost - a.lost)[0];
   const item = r => ({ rank: r.rank, supplier: r.supplier, annual_spend_usd: Math.round(r.annual_spend), overall: one(r.overall), rating: r.rating,
@@ -1242,11 +1310,14 @@ AI.wire('supplier', () => {
   return {
     _scope: `${rows.length} suppliers`,
     weights_percent: w,
-    summary: { suppliers: rows.length, total_annual_spend_usd: Math.round(spend), average_score: one(rows.reduce((s, r) => s + r.overall, 0) / rows.length),
-               preferred: rows.filter(r => r.rating === 'Preferred').length, acceptable: rows.filter(r => r.rating === 'Acceptable').length,
-               watch: rows.filter(r => r.rating === 'Watch').length, critical: rows.filter(r => r.rating === 'Critical').length },
-    requiring_attention_by_spend: rows.filter(r => r.rating === 'Watch' || r.rating === 'Critical').sort((a, b) => b.annual_spend - a.annual_spend).slice(0, 10).map(item),
-    top_rated: rows.slice(0, 3).map(item),
+    summary: { suppliers: rows.length, scored: scored.length, incomplete: rows.length - scored.length,
+               total_annual_spend_usd: Math.round(spend),
+               average_score: scored.length ? one(scored.reduce((s, r) => s + r.overall, 0) / scored.length) : null,
+               preferred: scored.filter(r => r.rating === 'Preferred').length, acceptable: scored.filter(r => r.rating === 'Acceptable').length,
+               watch: scored.filter(r => r.rating === 'Watch').length, critical: scored.filter(r => r.rating === 'Critical').length },
+    requiring_attention_by_spend: scored.filter(r => r.rating === 'Watch' || r.rating === 'Critical').sort((a, b) => b.annual_spend - a.annual_spend).slice(0, 10).map(item),
+    top_rated: scored.slice(0, 3).map(item),
+    incomplete_suppliers: rows.filter(r => r.incomplete).map(r => ({ supplier: r.supplier, annual_spend_usd: Math.round(r.annual_spend), missing_fields: r.missingFields })),
   };
 });
 

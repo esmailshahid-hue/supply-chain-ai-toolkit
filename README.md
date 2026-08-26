@@ -1,8 +1,15 @@
 # Supply Chain AI Toolkit
 
-Practical supply-chain analytics tools built with AI-assisted coding. A portfolio project: one HTML file, no build step, no database. Every CSV is processed in the browser. The only optional server piece is a single function that turns the calculated results into a short AI-written brief.
+**Live Demo:** https://esmail-supply-chain-ai-toolkit-blond.vercel.app/
+**Source Code:** https://github.com/esmailshahid-hue/supply-chain-ai-toolkit
 
-**Live demo:** enable GitHub Pages on this repo (Settings → Pages → branch `main`, folder `/`) and open the URL.
+Practical supply-chain analytics tools built with AI-assisted coding. A portfolio project: one HTML file, no build step, no database. CSV parsing and all calculations happen in the browser. The only optional server piece is a single function (`api/brief.js`) that turns the calculated results into a short AI-written brief — raw uploaded CSVs are never sent to it, only the structured numbers the page has already computed, and only when you click **Generate AI Brief**.
+
+## Deployment
+
+The project is deployed on **Vercel**, which is the recommended way to run it: it serves the static page and also hosts the optional `api/brief.js` serverless function for the AI Brief feature. See [Generate AI Brief](#generate-ai-brief-optional) below for setup.
+
+Since the three analytics tools are fully client-side, `index.html` also works as a static file with no server at all (e.g. opened directly, or hosted on any static file host including GitHub Pages) — you'll just lose the AI Brief buttons, which hide themselves automatically when no server/key is available.
 
 ## Tools
 
@@ -109,28 +116,31 @@ Each dimension is scored 0–100 with a linear formula, clamped to that range:
 
 **Overall** = Σ (dimension score × weight). Default weights: Delivery 35%, Quality 25%, Cost 25%, Service 15%. Weights are editable in the UI and must sum to 100% — if they don't, the table keeps the last valid weights and shows an error.
 
-Ratings: **Preferred** ≥ 85 · **Acceptable** 70–84.99 · **Watch** 55–69.99 · **Critical** < 55. Ranking is by overall score, ties broken by spend.
+Ratings: **Preferred** ≥ 85 · **Acceptable** 70–84.99 · **Watch** 55–69.99 · **Critical** < 55 · **Incomplete** — required metric missing or invalid, not scored. Ranking is by overall score among scored suppliers only, ties broken by spend.
 
 ### Features
 
-- Supplier count and spend, simple and spend-weighted average score, highest-rated supplier, and count requiring attention (Watch + Critical)
-- Ranked, sortable, filterable table
-- Click any row for a breakdown: input, score, weight, points earned and points lost per dimension, plus a one-line explanation of the biggest drag and the gap to the next rating band
-- Export the current view with all inputs and scores; weights are recorded in the filename
+- Supplier count and spend, simple and spend-weighted average score (scored suppliers only), highest-rated supplier, and count requiring attention (Watch + Critical)
+- Ranked, sortable, filterable table — filter includes an **Incomplete** option
+- Click any row for a breakdown: input, score, weight, points earned and points lost per dimension, plus a one-line explanation of the biggest drag and the gap to the next rating band. Incomplete suppliers show which metric(s) are missing instead.
+- Export the current view with all inputs and scores; weights are recorded in the filename; Incomplete rows export with blank scores and a note naming the missing field(s)
 
 ### Edge cases
 
-- Values may include `%` or `$` signs. Blank or non-numeric values become 0 and are flagged ⚠; OTIF above 100 is capped and flagged. Note the consequence: a blank OTIF scores 0 on delivery, a blank defect rate scores 100 on quality — flagged rows should be checked before acting.
-- Price variance may be negative (favorable). Other fields are clamped at 0.
+- Values may include `%` or `$` signs. OTIF above 100 is capped and flagged.
+- **Missing/invalid data is never treated as 0.** If `otif_percent`, `defect_rate_percent`, `price_variance_percent`, or `avg_response_hours` is blank, non-numeric, or (other than price variance) negative, the supplier is marked **Incomplete**: no overall score or rating is calculated, and it's excluded from rank, the average score, the spend-weighted average, and highest-rated. It stays visible in the table with the missing field(s) named on hover (⚠).
+- A genuine `0` (e.g. 0% defects, 0% price variance) is a valid value and is scored normally — it is not confused with missing data.
+- Price variance may legitimately be negative (favorable pricing); the other three metrics must be ≥ 0 to be valid.
+- `annual_spend` isn't a required scoring metric — a blank or invalid value there is treated as $0 spend and doesn't make a supplier Incomplete.
 - Rows without a supplier name are skipped; duplicates are kept and flagged.
 
 ## Generate AI Brief (optional)
 
 Each tool has a **Generate AI Brief** button that produces a ≤150-word summary with the top 3 issues, why they matter and recommended actions. The model does not calculate anything: the page sends only figures it has already computed (counts, statuses, scores, dollar amounts) and the model is instructed to use those numbers verbatim. The API key lives in one serverless function, `api/brief.js`, never in the page.
 
-- **No key configured, or no server** (GitHub Pages, opening the file directly): the button is hidden. Everything else works unchanged.
-- **Vercel**: import the repo, set the `ANTHROPIC_API_KEY` environment variable, deploy. `api/brief.js` is picked up automatically. Optionally set `BRIEF_MODEL`.
-- **Local**: `ANTHROPIC_API_KEY=sk-... node server.js` then open http://localhost:3000. Node 18+, no npm install needed.
+- **Vercel (recommended):** import the repo, set the `ANTHROPIC_API_KEY` environment variable, deploy. `api/brief.js` is picked up automatically. Optionally set `BRIEF_MODEL`.
+- **Local:** `ANTHROPIC_API_KEY=sk-... node server.js` then open http://localhost:3000. Node 18+, no npm install needed.
+- **No key configured, or a static-only host** (opening the file directly, GitHub Pages, etc.): the button hides itself automatically. Everything else works unchanged.
 
 Payloads are a few KB and capped server-side. There is no chat, no history and nothing is stored.
 
