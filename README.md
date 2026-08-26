@@ -5,6 +5,20 @@
 
 Practical supply-chain analytics tools built with AI-assisted coding. A portfolio project: one HTML file, no build step, no database. CSV parsing and all calculations happen in the browser. The only optional server piece is a single function (`api/brief.js`) that turns the calculated results into a short AI-written brief — raw uploaded CSVs are never sent to it, only the structured numbers the page has already computed, and only when you click **Generate AI Brief**.
 
+## Uploading data
+
+Each tool accepts a **CSV file** (comma-separated by default; semicolon- and tab-delimited files are detected automatically). You don't need to match the internal column names exactly — uploaded headers are matched automatically:
+
+- Matching is case-insensitive.
+- Spaces, underscores and hyphens are normalized, so `Product Name`, `product_name` and `product-name` are treated the same.
+- Common synonyms are recognized automatically (e.g. `vendor` for `supplier`, `stock_on_hand` for `current_inventory`) — see each tool's column list below.
+- If every required column can be matched with confidence, analysis starts immediately.
+- If a column is missing or ambiguous (two uploaded columns look equally likely), a compact **"Map your columns"** panel opens. Pick the right uploaded column from a dropdown for each unresolved field, then click **Analyze Data** to continue.
+- Extra columns in your file are simply ignored.
+- Your uploaded file is never modified — mapping only tells the app which column to read for each field.
+
+A file isn't rejected just because its headers differ from the field names each tool expects (listed in its section below); analysis is only blocked if a required field truly can't be resolved and you close the mapping panel without picking one.
+
 ## Deployment
 
 The project is deployed on **Vercel**, which is the recommended way to run it: it serves the static page and also hosts the optional `api/brief.js` serverless function for the AI Brief feature. See [Generate AI Brief](#generate-ai-brief-optional) below for setup.
@@ -21,11 +35,19 @@ Since the three analytics tools are fully client-side, `index.html` also works a
 
 ## Inventory Planner
 
-Upload a CSV with these columns (case-insensitive):
+The tool needs one row per SKU with:
 
-```
-sku, product_name, current_inventory, open_po_qty, avg_daily_sales, lead_time_days, safety_stock, moq, unit_cost
-```
+- **SKU**
+- **Product Name**
+- **Current Inventory**
+- **Open PO Quantity**
+- **Average Daily Sales**
+- **Lead Time Days**
+- **Safety Stock**
+- **MOQ**
+- **Unit Cost**
+
+Your uploaded column headers don't need to match those labels exactly — equivalent names (e.g. `stock_on_hand` for Current Inventory, `daily_demand` for Average Daily Sales) are mapped automatically, or manually via the mapping panel if the app isn't confident. See [Uploading data](#uploading-data).
 
 Or click **Load sample data** — `sample-inventory.csv` ships with 32 realistic SKUs, including two deliberately messy rows.
 
@@ -47,22 +69,31 @@ Status is assigned in this order: **Critical** (position < lead-time demand) →
 - Zero sales: days of cover shows "no sales", lead-time demand is 0, and stock on hand counts as overstock. No stock and no sales is healthy.
 - MOQ of 0, blank or negative is treated as 1.
 - Rows without a SKU are skipped; duplicate SKUs are kept and flagged.
-- Files missing a required column are rejected with a message naming the column.
+- If a required field can't be confidently matched to an uploaded column, the mapping panel opens so you can pick it manually before analysis runs.
 
 ### Features
 
 - Four summary tiles that double as status filters
 - Search, status filter, sortable columns
 - Export the current view (with all computed columns) as CSV
+- [Reset to Sample Data](#reset-to-sample-data) to clear uploaded data and start fresh
 - Responsive down to mobile, keyboard accessible
 
 ## Freight Exceptions
 
-Upload a CSV with these columns (case-insensitive):
+The tool needs one row per shipment with:
 
-```
-shipment_id, origin, destination, carrier, distance_miles, freight_cost, ship_date, promised_delivery_date, actual_delivery_date
-```
+- **Shipment ID**
+- **Origin**
+- **Destination**
+- **Carrier**
+- **Distance**
+- **Freight Cost**
+- **Ship Date**
+- **Promised Delivery Date**
+- **Actual Delivery Date** — optional; leave blank for shipments not yet delivered (see edge cases below)
+
+As with Inventory Planner, header names are matched automatically by meaning, not exact spelling — see [Uploading data](#uploading-data).
 
 Or click **Load sample data** — `sample-shipments.csv` ships with 42 shipments across 7 lanes and 4 carriers, including five edge-case rows.
 
@@ -85,6 +116,7 @@ Status, checked in order: **Critical** (high cost and late) → **High Cost** (v
 - Opens on flagged shipments; filters for status, carrier and lane, plus shipment ID search
 - Sortable columns; unknown values always sort to the bottom
 - Export the current view with all inputs and computed fields
+- [Reset to Sample Data](#reset-to-sample-data) to clear uploaded data and start fresh
 
 ### Edge cases
 
@@ -95,11 +127,16 @@ Status, checked in order: **Critical** (high cost and late) → **High Cost** (v
 
 ## Supplier Scorecard
 
-Upload a CSV with these columns (case-insensitive):
+The tool needs one row per supplier with:
 
-```
-supplier, annual_spend, otif_percent, defect_rate_percent, price_variance_percent, avg_response_hours
-```
+- **Supplier**
+- **Annual Spend** — optional; a blank or invalid value is treated as $0 spend and doesn't affect scoring
+- **OTIF %**
+- **Defect Rate %**
+- **Price Variance %**
+- **Average Response Hours**
+
+Header names are matched automatically by meaning (e.g. `vendor_name` for Supplier, `ppv` for Price Variance %) or mapped manually if needed — see [Uploading data](#uploading-data).
 
 Or click **Load sample data** — `sample-suppliers.csv` ships with 20 suppliers, including two messy rows.
 
@@ -124,6 +161,7 @@ Ratings: **Preferred** ≥ 85 · **Acceptable** 70–84.99 · **Watch** 55–69.
 - Ranked, sortable, filterable table — filter includes an **Incomplete** option
 - Click any row for a breakdown: input, score, weight, points earned and points lost per dimension, plus a one-line explanation of the biggest drag and the gap to the next rating band. Incomplete suppliers show which metric(s) are missing instead.
 - Export the current view with all inputs and scores; weights are recorded in the filename; Incomplete rows export with blank scores and a note naming the missing field(s)
+- [Reset to Sample Data](#reset-to-sample-data) to clear uploaded data, custom weights, and start fresh
 
 ### Edge cases
 
@@ -144,9 +182,34 @@ Each tool has a **Generate AI Brief** button that produces a ≤150-word summary
 
 Payloads are a few KB and capped server-side. There is no chat, no history and nothing is stored.
 
-## Input files
+## Export results
 
-Comma-separated by default; semicolon- and tab-delimited files are detected automatically. Column headers are matched case-insensitively and extra columns are ignored. Every export contains only the rows currently shown, with all calculated columns added.
+Every tool has an **Export … CSV** button that downloads the results currently on screen straight to your computer — no server or database involved.
+
+- Exports reflect the current view: active filters and search determine which rows are included, and sorting determines their order.
+- Exported files include all the calculated columns (statuses, scores, reorder points, excess cost, etc.), not just your original inputs.
+- The Supplier Scorecard export records the current weights in the filename and represents Incomplete suppliers with blank scores and a note naming the missing metric(s).
+
+## Reset to Sample Data
+
+Each tool has a **Reset to Sample Data** button (next to Upload CSV) for returning to a clean demo state without reloading the page. Clicking it:
+
+- Removes the currently loaded/uploaded data from the app
+- Clears search, active filters, and any open column-mapping panel
+- Resets table sorting to that tool's default
+- Resets the Supplier Scorecard's weights to the defaults (Delivery 35%, Quality 25%, Cost 25%, Service 15%) and closes the supplier detail panel
+- Closes any previously generated AI Brief
+- Reloads that tool's built-in sample dataset
+
+It does not touch your uploaded file on disk — it only clears what the app currently holds in browser memory — and you can upload a new CSV normally right afterward.
+
+## Data handling
+
+- CSV parsing and every calculation run entirely in your browser; nothing is uploaded to a server just to view or analyze your data.
+- There's no database — uploaded files and results exist only in the browser's memory for the current page session.
+- Closing the tab or refreshing the page clears that session; nothing persists between visits (the app does not use localStorage, cookies, or any storage API).
+- Raw uploaded CSV files are never sent anywhere, including to the AI Brief endpoint.
+- The only thing ever sent off the page is the calculated, structured summary (counts, statuses, scores, dollar amounts) — and only when you explicitly click **Generate AI Brief**.
 
 ## Running locally
 
