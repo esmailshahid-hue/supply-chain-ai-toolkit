@@ -261,6 +261,7 @@
       <input id="file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
       <button class="btn" id="load-sample">Load sample data</button>
       <button class="btn link" id="download-sample">Download sample CSV</button>
+      <button class="btn link" id="reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset to Sample Data</button>
       <span class="source" id="source"></span>
       <span class="spacer"></span>
       <button class="btn ai-btn" id="ai-inventory" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
@@ -371,6 +372,7 @@
       <input id="f-file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
       <button class="btn" id="f-load-sample">Load sample data</button>
       <button class="btn link" id="f-download-sample">Download sample CSV</button>
+      <button class="btn link" id="f-reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset to Sample Data</button>
       <span class="source" id="f-source"></span>
       <span class="spacer"></span>
       <button class="btn ai-btn" id="ai-freight" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
@@ -487,6 +489,7 @@
       <input id="s-file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
       <button class="btn" id="s-load-sample">Load sample data</button>
       <button class="btn link" id="s-download-sample">Download sample CSV</button>
+      <button class="btn link" id="s-reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset to Sample Data</button>
       <span class="source" id="s-source"></span>
       <span class="spacer"></span>
       <button class="btn ai-btn" id="ai-supplier" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
@@ -1036,6 +1039,12 @@ $('file-input').addEventListener('change', e => {
 });
 $('load-sample').addEventListener('click', () => load(SAMPLE_CSV, 'sample-inventory.csv'));
 $('download-sample').addEventListener('click', () => download('sample-inventory.csv', SAMPLE_CSV));
+$('reset-sample').addEventListener('click', () => {
+  $('file-input').value = '';
+  state.sortKey = 'status'; state.sortDir = 'asc';
+  const brief = $('brief-inventory'); brief.hidden = true; brief.innerHTML = '';
+  load(SAMPLE_CSV, 'sample-inventory.csv');
+});
 
 $('export').addEventListener('click', () => {
   const headers = ['sku','product_name','current_inventory','open_po_qty','inventory_position','avg_daily_sales','lead_time_days',
@@ -1396,6 +1405,13 @@ $('s-file-input').addEventListener('change', e => {
 });
 $('s-load-sample').addEventListener('click', () => load(SAMPLE_SUPPLIERS_CSV, 'sample-suppliers.csv'));
 $('s-download-sample').addEventListener('click', () => download('sample-suppliers.csv', SAMPLE_SUPPLIERS_CSV));
+$('s-reset-sample').addEventListener('click', () => {
+  $('s-file-input').value = '';
+  state.sortKey = 'overall'; state.sortDir = 'desc';
+  document.querySelectorAll('#weights input').forEach(i => i.value = DEFAULT_WEIGHTS[i.dataset.w]);
+  const brief = $('brief-supplier'); brief.hidden = true; brief.innerHTML = '';
+  load(SAMPLE_SUPPLIERS_CSV, 'sample-suppliers.csv');
+});
 
 $('s-export').addEventListener('click', () => {
   const headers = ['rank','supplier','annual_spend','otif_percent','defect_rate_percent','price_variance_percent','avg_response_hours',
@@ -1719,6 +1735,11 @@ $('f-file-input').addEventListener('change', e => {
 });
 $('f-load-sample').addEventListener('click', () => load(SAMPLE_SHIPMENTS_CSV, 'sample-shipments.csv'));
 $('f-download-sample').addEventListener('click', () => download('sample-shipments.csv', SAMPLE_SHIPMENTS_CSV));
+$('f-reset-sample').addEventListener('click', () => {
+  $('f-file-input').value = '';
+  const brief = $('brief-freight'); brief.hidden = true; brief.innerHTML = '';
+  load(SAMPLE_SHIPMENTS_CSV, 'sample-shipments.csv');
+});
 
 $('f-export').addEventListener('click', () => {
   const headers = ['shipment_id','lane','origin','destination','carrier','distance_miles','freight_cost','cost_per_mile','lane_avg_cost_per_mile','lane_shipments',
