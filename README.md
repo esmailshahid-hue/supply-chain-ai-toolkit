@@ -1,9 +1,9 @@
-# Supply Chain AI Toolkit
+# Supply Chain Workbench
 
 **Live Demo:** https://esmail-supply-chain-ai-toolkit-blond.vercel.app/
 **Source Code:** https://github.com/esmailshahid-hue/supply-chain-ai-toolkit
 
-Practical supply-chain analytics tools built with AI-assisted coding. A portfolio project: one HTML file, no build step, no database. CSV parsing and all calculations happen in the browser. The only optional server piece is a single function (`api/brief.js`) that turns the calculated results into a short AI-written brief — raw uploaded CSVs are never sent to it, only the structured numbers the page has already computed, and only when you click **Generate AI Brief**.
+Browser-based tools for inventory planning, freight exceptions and supplier performance. One HTML file, no build step, no database. CSV parsing and all calculations happen in the browser. The only optional server piece is a single function (`api/brief.js`) that turns the calculated results into a short AI-generated Action Summary — raw uploaded CSVs are never sent to it, only the structured numbers the page has already computed, and only when you click **Generate Action Summary**.
 
 ## Uploading data
 
@@ -21,9 +21,9 @@ A file isn't rejected just because its headers differ from the field names each 
 
 ## Deployment
 
-The project is deployed on **Vercel**, which is the recommended way to run it: it serves the static page and also hosts the optional `api/brief.js` serverless function for the AI Brief feature. See [Generate AI Brief](#generate-ai-brief-optional) below for setup.
+The project is deployed on **Vercel**, which is the recommended way to run it: it serves the static page and also hosts the optional `api/brief.js` serverless function for the Action Summary feature. See [Generate Action Summary](#generate-action-summary-optional) below for setup.
 
-Since the three analytics tools are fully client-side, `index.html` also works as a static file with no server at all (e.g. opened directly, or hosted on any static file host including GitHub Pages) — you'll just lose the AI Brief buttons, which hide themselves automatically when no server/key is available.
+Since the three tools are fully client-side, `index.html` also works as a static file with no server at all (e.g. opened directly, or hosted on any static file host including GitHub Pages) — you'll just lose the Action Summary buttons, which hide themselves automatically when no server/key is available.
 
 ## Tools
 
@@ -49,7 +49,7 @@ The tool needs one row per SKU with:
 
 Your uploaded column headers don't need to match those labels exactly — equivalent names (e.g. `stock_on_hand` for Current Inventory, `daily_demand` for Average Daily Sales) are mapped automatically, or manually via the mapping panel if the app isn't confident. See [Uploading data](#uploading-data).
 
-Or click **Load sample data** — `sample-inventory.csv` ships with 32 realistic SKUs, including two deliberately messy rows.
+Or click **Load sample** — `sample-inventory.csv` ships with 32 realistic SKUs, including two deliberately messy rows.
 
 ### Calculations
 
@@ -76,7 +76,7 @@ Status is assigned in this order: **Critical** (position < lead-time demand) →
 - Four summary tiles that double as status filters
 - Search, status filter, sortable columns
 - Export the current view (with all computed columns) as CSV
-- [Reset to Sample Data](#reset-to-sample-data) to clear uploaded data and start fresh
+- [Reset sample](#reset-sample) to clear uploaded data and start fresh
 - Responsive down to mobile, keyboard accessible
 
 ## Freight Exceptions
@@ -95,7 +95,7 @@ The tool needs one row per shipment with:
 
 As with Inventory Planner, header names are matched automatically by meaning, not exact spelling — see [Uploading data](#uploading-data).
 
-Or click **Load sample data** — `sample-shipments.csv` ships with 42 shipments across 7 lanes and 4 carriers, including five edge-case rows.
+Or click **Load sample** — `sample-shipments.csv` ships with 42 shipments across 7 lanes and 4 carriers, including five edge-case rows.
 
 ### Calculations
 
@@ -116,7 +116,7 @@ Status, checked in order: **Critical** (high cost and late) → **High Cost** (v
 - Opens on flagged shipments; filters for status, carrier and lane, plus shipment ID search
 - Sortable columns; unknown values always sort to the bottom
 - Export the current view with all inputs and computed fields
-- [Reset to Sample Data](#reset-to-sample-data) to clear uploaded data and start fresh
+- [Reset sample](#reset-sample) to clear uploaded data and start fresh
 
 ### Edge cases
 
@@ -138,7 +138,7 @@ The tool needs one row per supplier with:
 
 Header names are matched automatically by meaning (e.g. `vendor_name` for Supplier, `ppv` for Price Variance %) or mapped manually if needed — see [Uploading data](#uploading-data).
 
-Or click **Load sample data** — `sample-suppliers.csv` ships with 20 suppliers, including two messy rows.
+Or click **Load sample** — `sample-suppliers.csv` ships with 20 suppliers, including two messy rows.
 
 ### Scoring
 
@@ -161,7 +161,7 @@ Ratings: **Preferred** ≥ 85 · **Acceptable** 70–84.99 · **Watch** 55–69.
 - Ranked, sortable, filterable table — filter includes an **Incomplete** option
 - Click any row for a breakdown: input, score, weight, points earned and points lost per dimension, plus a one-line explanation of the biggest drag and the gap to the next rating band. Incomplete suppliers show which metric(s) are missing instead.
 - Export the current view with all inputs and scores; weights are recorded in the filename; Incomplete rows export with blank scores and a note naming the missing field(s)
-- [Reset to Sample Data](#reset-to-sample-data) to clear uploaded data, custom weights, and start fresh
+- [Reset sample](#reset-sample) to clear uploaded data, custom weights, and start fresh
 
 ### Edge cases
 
@@ -172,14 +172,15 @@ Ratings: **Preferred** ≥ 85 · **Acceptable** 70–84.99 · **Watch** 55–69.
 - `annual_spend` isn't a required scoring metric — a blank or invalid value there is treated as $0 spend and doesn't make a supplier Incomplete.
 - Rows without a supplier name are skipped; duplicates are kept and flagged.
 
-## Generate AI Brief (optional)
+## Generate Action Summary (optional)
 
-Each tool has a **Generate AI Brief** button that produces a ≤150-word summary with the top 3 issues, why they matter and recommended actions. The model does not calculate anything: the page sends only figures it has already computed (counts, statuses, scores, dollar amounts) and the model is instructed to use those numbers verbatim. The API key lives in one serverless function, `api/brief.js`, never in the page.
+Each tool has a **Generate Action Summary** button that produces a ≤150-word summary with the top 3 issues, why they matter and recommended actions. The model does not calculate anything: the page sends only figures it has already computed (counts, statuses, scores, dollar amounts) and the model is instructed to use those numbers verbatim. The API key lives in one serverless function, `api/brief.js`, never in the page.
 
-The brief is generated by **DeepSeek** (`deepseek-chat`) via its OpenAI-compatible API.
+The summary is generated by **DeepSeek** (`deepseek-v4-flash`) via its OpenAI-compatible API.
 
-- **Vercel (recommended):** import the repo, set the `DEEP_SEEK_API_KEY` environment variable, deploy. `api/brief.js` is picked up automatically. Optionally set `BRIEF_MODEL` or `BRIEF_API_URL`.
-- **Local:** put `DEEP_SEEK_API_KEY=sk-...` in a `.env` file at the project root, then `node server.js` and open http://localhost:3000. Node 20.12+, no npm install needed. `.env` is gitignored and is never served over HTTP.
+- **Vercel (recommended):** import the repo, set the `DEEPSEEK_API_KEY` environment variable, deploy. `api/brief.js` is picked up automatically. Optionally set `BRIEF_MODEL` or `BRIEF_API_URL`.
+- **Local:** put `DEEPSEEK_API_KEY=sk-...` in a `.env` file at the project root, then `node server.js` and open http://localhost:3000. Node 20.12+, no npm install needed. `.env` is gitignored and is never served over HTTP.
+- `DEEP_SEEK_API_KEY` is also accepted as a legacy alias if that's what's already set in your environment, but `DEEPSEEK_API_KEY` is preferred for any new setup.
 - **No key configured, or a static-only host** (opening the file directly, GitHub Pages, etc.): the button hides itself automatically. Everything else works unchanged.
 
 Payloads are a few KB and capped server-side. There is no chat, no history and nothing is stored.
@@ -192,15 +193,15 @@ Every tool has an **Export … CSV** button that downloads the results currently
 - Exported files include all the calculated columns (statuses, scores, reorder points, excess cost, etc.), not just your original inputs.
 - The Supplier Scorecard export records the current weights in the filename and represents Incomplete suppliers with blank scores and a note naming the missing metric(s).
 
-## Reset to Sample Data
+## Reset sample
 
-Each tool has a **Reset to Sample Data** button (next to Upload CSV) for returning to a clean demo state without reloading the page. Clicking it:
+Each tool has a **Reset sample** button (next to Upload CSV) for returning to a clean demo state without reloading the page. Clicking it:
 
 - Removes the currently loaded/uploaded data from the app
 - Clears search, active filters, and any open column-mapping panel
 - Resets table sorting to that tool's default
 - Resets the Supplier Scorecard's weights to the defaults (Delivery 35%, Quality 25%, Cost 25%, Service 15%) and closes the supplier detail panel
-- Closes any previously generated AI Brief
+- Closes any previously generated Action Summary
 - Reloads that tool's built-in sample dataset
 
 It does not touch your uploaded file on disk — it only clears what the app currently holds in browser memory — and you can upload a new CSV normally right afterward.
@@ -210,13 +211,13 @@ It does not touch your uploaded file on disk — it only clears what the app cur
 - CSV parsing and every calculation run entirely in your browser; nothing is uploaded to a server just to view or analyze your data.
 - There's no database — uploaded files and results exist only in the browser's memory for the current page session.
 - Closing the tab or refreshing the page clears that session; nothing persists between visits (the app does not use localStorage, cookies, or any storage API).
-- Raw uploaded CSV files are never sent anywhere, including to the AI Brief endpoint.
-- The only thing ever sent off the page is the calculated, structured summary (counts, statuses, scores, dollar amounts) — and only when you explicitly click **Generate AI Brief**.
+- Raw uploaded CSV files are never sent anywhere, including to the Action Summary endpoint.
+- The only thing ever sent off the page is the calculated, structured summary (counts, statuses, scores, dollar amounts) — and only when you explicitly click **Generate Action Summary**.
 
 ## Running locally
 
-Open `index.html` in any modern browser. That's it. For the AI brief, add `DEEP_SEEK_API_KEY` to `.env` and run `node server.js` as described above.
+Open `index.html` in any modern browser. That's it. For the Action Summary feature, add `DEEPSEEK_API_KEY` to `.env` and run `node server.js` as described above.
 
 ## Stack
 
-Vanilla HTML, CSS and JavaScript (~1,500 lines in one file) plus a dependency-free Node function for the AI brief. No frameworks, build step or tracking. Built with Claude as a pair-programmer.
+Vanilla HTML, CSS and JavaScript (~1,500 lines in one file) plus a dependency-free Node function for the Action Summary feature. No frameworks, build step or tracking. Built with Claude as a pair-programmer.

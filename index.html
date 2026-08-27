@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Supply Chain AI Toolkit</title>
-<meta name="description" content="Practical supply-chain analytics tools built with AI-assisted coding. Inventory planning, freight exceptions and supplier scorecards — CSV parsing and calculations run in your browser; the optional AI Brief sends only calculated results when requested.">
+<title>Supply Chain Workbench</title>
+<meta name="description" content="Browser-based tools for inventory planning, freight exception analysis and supplier performance, with an optional AI-generated Action Summary.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -238,8 +238,8 @@
 <header>
   <div class="wrap">
     <div class="masthead">
-      <h1>Supply Chain AI Toolkit <span>Practical analytics tools, built with AI-assisted coding</span></h1>
-      <div class="meta">CSV processing stays in your browser · AI Brief sends calculated results only when requested · <a href="https://github.com/esmailshahid-hue/supply-chain-ai-toolkit" target="_blank" rel="noopener">Source on GitHub</a></div>
+      <h1>Supply Chain Workbench <span>Inventory planning · Freight exceptions · Supplier performance</span></h1>
+      <div class="meta">CSV files stay local. Only calculated results are sent when you request an Action Summary. · <a href="https://github.com/esmailshahid-hue/supply-chain-ai-toolkit" target="_blank" rel="noopener">View source</a></div>
     </div>
     <nav role="tablist" aria-label="Tools">
       <button role="tab" id="tab-inventory" aria-controls="panel-inventory" aria-selected="true">Inventory Planner</button>
@@ -254,18 +254,18 @@
   <!-- ================= Inventory Planner ================= -->
   <section id="panel-inventory" role="tabpanel" aria-labelledby="tab-inventory">
 
-    <p class="intro">Upload a SKU list to see what to reorder, how much, and what is overstocked.</p>
+    <p class="intro">Upload SKU data to identify stockout risk, reorder quantities and overstock.</p>
 
     <div class="toolbar">
       <label class="btn primary" for="file-input">Upload CSV</label>
       <input id="file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
-      <button class="btn" id="load-sample">Load sample data</button>
-      <button class="btn link" id="download-sample">Download sample CSV</button>
-      <button class="btn link" id="reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset to Sample Data</button>
+      <button class="btn" id="load-sample">Load sample</button>
+      <button class="btn link" id="download-sample">Download sample</button>
+      <button class="btn link" id="reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset sample</button>
       <span class="source" id="source"></span>
       <span class="spacer"></span>
-      <button class="btn ai-btn" id="ai-inventory" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
-      <button class="btn" id="export" title="Exports the rows currently shown, with all calculated columns">Export results CSV</button>
+      <button class="btn ai-btn" id="ai-inventory" hidden title="Summarises the calculated results above using a server-side language model">Generate Action Summary</button>
+      <button class="btn" id="export" title="Exports the rows currently shown, with all calculated columns">Export CSV</button>
     </div>
 
     <div class="map-panel" id="map-panel" hidden></div>
@@ -279,12 +279,12 @@
       <button class="kpi" data-status="Critical" aria-pressed="false">
         <span class="label"><i class="dot critical"></i>Critical</span>
         <span class="value" id="k-critical">0</span>
-        <span class="sub">Position below lead-time demand</span>
+        <span class="sub">Inventory below lead-time demand</span>
       </button>
       <button class="kpi" data-status="Reorder" aria-pressed="false">
         <span class="label"><i class="dot reorder"></i>Reorder</span>
         <span class="value" id="k-reorder">0</span>
-        <span class="sub">Position below reorder point</span>
+        <span class="sub">Inventory below reorder point</span>
       </button>
       <button class="kpi" data-status="Overstock" aria-pressed="false">
         <span class="label"><i class="dot overstock"></i>Overstock</span>
@@ -365,18 +365,18 @@
   <!-- ================= Freight Exceptions ================= -->
   <section id="panel-freight" role="tabpanel" aria-labelledby="tab-freight" hidden>
 
-    <p class="intro">Upload a shipment log to find deliveries that were late or cost well above the lane norm, ranked by money at stake.</p>
+    <p class="intro">Upload shipment data to flag late and high-cost deliveries, ranked by estimated excess spend.</p>
 
     <div class="toolbar">
       <label class="btn primary" for="f-file-input">Upload CSV</label>
       <input id="f-file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
-      <button class="btn" id="f-load-sample">Load sample data</button>
-      <button class="btn link" id="f-download-sample">Download sample CSV</button>
-      <button class="btn link" id="f-reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset to Sample Data</button>
+      <button class="btn" id="f-load-sample">Load sample</button>
+      <button class="btn link" id="f-download-sample">Download sample</button>
+      <button class="btn link" id="f-reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset sample</button>
       <span class="source" id="f-source"></span>
       <span class="spacer"></span>
-      <button class="btn ai-btn" id="ai-freight" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
-      <button class="btn" id="f-export" title="Exports the rows currently shown, with all calculated columns">Export exceptions CSV</button>
+      <button class="btn ai-btn" id="ai-freight" hidden title="Summarises the calculated results above using a server-side language model">Generate Action Summary</button>
+      <button class="btn" id="f-export" title="Exports the rows currently shown, with all calculated columns">Export CSV</button>
     </div>
 
     <div class="map-panel" id="f-map-panel" hidden></div>
@@ -482,18 +482,18 @@
 
   <section id="panel-supplier" role="tabpanel" aria-labelledby="tab-supplier" hidden>
 
-    <p class="intro">Upload supplier metrics to rank suppliers on delivery, quality, cost and service with weights you control.</p>
+    <p class="intro">Upload supplier data to score delivery, quality, cost and service performance.</p>
 
     <div class="toolbar">
       <label class="btn primary" for="s-file-input">Upload CSV</label>
       <input id="s-file-input" type="file" accept=".csv,text/csv" class="visually-hidden">
-      <button class="btn" id="s-load-sample">Load sample data</button>
-      <button class="btn link" id="s-download-sample">Download sample CSV</button>
-      <button class="btn link" id="s-reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset to Sample Data</button>
+      <button class="btn" id="s-load-sample">Load sample</button>
+      <button class="btn link" id="s-download-sample">Download sample</button>
+      <button class="btn link" id="s-reset-sample" title="Clears uploaded session data and reloads the sample dataset.">Reset sample</button>
       <span class="source" id="s-source"></span>
       <span class="spacer"></span>
-      <button class="btn ai-btn" id="ai-supplier" hidden title="Summarises the calculated results above using a server-side language model">Generate AI Brief</button>
-      <button class="btn" id="s-export" title="Exports the rows currently shown, with all calculated columns">Export scorecard CSV</button>
+      <button class="btn ai-btn" id="ai-supplier" hidden title="Summarises the calculated results above using a server-side language model">Generate Action Summary</button>
+      <button class="btn" id="s-export" title="Exports the rows currently shown, with all calculated columns">Export CSV</button>
     </div>
 
     <div class="map-panel" id="s-map-panel" hidden></div>
@@ -902,7 +902,7 @@ function renderKPIs() {
   $('k-overstock').textContent = fmtInt(counts.Overstock);
   const toOrder = state.rows.filter(r => r.suggested_order > 0);
   const value = toOrder.reduce((s, r) => s + r.order_value, 0);
-  $('k-total-sub').textContent = total ? `${toOrder.length} need an order · ${fmtMoney(value)}` : 'Load a CSV to begin';
+  $('k-total-sub').textContent = total ? `${toOrder.length} to reorder · ${fmtMoney(value)}` : 'Load a CSV to begin';
 
   $('strip').innerHTML = STATUSES.map(s => `<div class="${s.toLowerCase()}" style="flex:${counts[s]}"></div>`).join('');
   $('legend').innerHTML = STATUSES.map(s =>
@@ -990,7 +990,7 @@ const AI = {
     const btn = $(`ai-${tool}`), box = $(`brief-${tool}`);
     const render = (cls, body, meta) => {
       box.className = 'brief' + (cls ? ' ' + cls : ''); box.hidden = false;
-      box.innerHTML = `<div class="head"><strong>AI brief</strong><span class="meta">${meta}</span><button class="btn link close">Close</button></div><div class="body">${body}</div>`;
+      box.innerHTML = `<div class="head"><strong>Action Summary</strong><span class="meta">${meta}</span><button class="btn link close">Close</button></div><div class="body">${body}</div>`;
       box.querySelector('.close').addEventListener('click', () => { box.hidden = true; box.innerHTML = ''; });
     };
     btn.addEventListener('click', async () => {
@@ -1003,10 +1003,10 @@ const AI = {
         const out = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(out.error || `Request failed (${r.status})`);
         const html = esc(out.brief).replace(/^\s*(Top 3 issues|Why they matter|Recommended actions)\s*:?\s*\n/gim, '<span class="h">$1</span>');
-        render('', html, `Written from the calculated results shown on this page · ${scope}`);
+        render('', html, `AI-generated from calculated results · ${scope}`);
       } catch (e) {
         render('error', esc(e.message), '');
-      } finally { btn.disabled = false; btn.textContent = 'Generate AI Brief'; }
+      } finally { btn.disabled = false; btn.textContent = 'Generate Action Summary'; }
     });
   },
 };
