@@ -1465,11 +1465,15 @@ AI.wire('supplier', () => {
                        delivery: one(r.delivery), quality: one(r.quality), cost: one(r.cost), service: one(r.service),
                        biggest_drag: `${weakest(r).label} (${one(weakest(r).lost)} points lost)` });
   const spend = rows.reduce((s, r) => s + r.annual_spend, 0);
+  const criticalSpend = rows.filter(r => r.rating === 'Critical').reduce((s, r) => s + r.annual_spend, 0);
+  const incompleteSpend = rows.filter(r => r.incomplete).reduce((s, r) => s + r.annual_spend, 0);
   return {
     _scope: `${rows.length} suppliers`,
     weights_percent: w,
     summary: { suppliers: rows.length, scored: scored.length, incomplete: rows.length - scored.length,
                total_annual_spend_usd: Math.round(spend),
+               critical_total_spend_usd: Math.round(criticalSpend),
+               incomplete_total_spend_usd: Math.round(incompleteSpend),
                average_score: scored.length ? one(scored.reduce((s, r) => s + r.overall, 0) / scored.length) : null,
                preferred: scored.filter(r => r.rating === 'Preferred').length, acceptable: scored.filter(r => r.rating === 'Acceptable').length,
                watch: scored.filter(r => r.rating === 'Watch').length, critical: scored.filter(r => r.rating === 'Critical').length },
