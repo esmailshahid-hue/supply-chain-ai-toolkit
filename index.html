@@ -1018,14 +1018,17 @@ AI.wire('inventory', () => {
   const rows = state.rows, by = st => rows.filter(r => r.status === st);
   const money = n => Math.round(n);
   const item = r => ({ sku: r.sku, product: r.product_name, status: r.status, inventory_position: r.inventory_position, reorder_point: money(r.reorder_point),
-                       days_of_cover: r.days_of_cover === Infinity ? 'no sales' : +r.days_of_cover.toFixed(1), suggested_order: r.suggested_order, order_value_usd: money(r.order_value) });
+                       days_of_cover: r.days_of_cover === Infinity ? 'no sales' : +r.days_of_cover.toFixed(1), suggested_order: r.suggested_order,
+                       order_value_usd: money(r.order_value), order_value_display: fmtMoney(money(r.order_value)) });
   const needOrder = rows.filter(r => r.suggested_order > 0).sort((a, b) => b.order_value - a.order_value);
+  const totalOrderValue = money(needOrder.reduce((s, r) => s + r.order_value, 0));
   return {
     _scope: `${rows.length} SKUs`,
     summary: { total_skus: rows.length, critical: by('Critical').length, reorder: by('Reorder').length, overstock: by('Overstock').length, healthy: by('Healthy').length,
-               skus_needing_order: needOrder.length, total_suggested_order_value_usd: money(needOrder.reduce((s, r) => s + r.order_value, 0)) },
+               skus_needing_order: needOrder.length, total_suggested_order_value_usd: totalOrderValue, total_suggested_order_value_display: fmtMoney(totalOrderValue) },
     critical_and_reorder_by_order_value: needOrder.slice(0, 12).map(item),
-    overstock_by_stock_value: by('Overstock').map(r => ({ ...item(r), stock_value_usd: money(r.current_inventory * r.unit_cost) })).sort((a, b) => b.stock_value_usd - a.stock_value_usd).slice(0, 6),
+    overstock_by_stock_value: by('Overstock').map(r => { const stockValue = money(r.current_inventory * r.unit_cost);
+      return { ...item(r), stock_value_usd: stockValue, stock_value_display: fmtMoney(stockValue) }; }).sort((a, b) => b.stock_value_usd - a.stock_value_usd).slice(0, 6),
   };
 });
 
@@ -1461,25 +1464,28 @@ AI.wire('supplier', () => {
   const scored = rows.filter(r => !r.incomplete);
   const one = n => +n.toFixed(1);
   const weakest = r => DIMS.map(d => ({ label: d.label, lost: (100 - r[d.key]) * w[d.key] / 100 })).sort((a, b) => b.lost - a.lost)[0];
-  const item = r => ({ rank: r.rank, supplier: r.supplier, annual_spend_usd: Math.round(r.annual_spend), overall: one(r.overall), rating: r.rating,
-                       delivery: one(r.delivery), quality: one(r.quality), cost: one(r.cost), service: one(r.service),
-                       biggest_drag: `${weakest(r).label} (${one(weakest(r).lost)} points lost)` });
+  const item = r => { const spendUsd = Math.round(r.annual_spend);
+    return { rank: r.rank, supplier: r.supplier, annual_spend_usd: spendUsd, annual_spend_display: fmtMoney(spendUsd), overall: one(r.overall), rating: r.rating,
+             delivery: one(r.delivery), quality: one(r.quality), cost: one(r.cost), service: one(r.service),
+             biggest_drag: `${weakest(r).label} (${one(weakest(r).lost)} points lost)` }; };
   const spend = rows.reduce((s, r) => s + r.annual_spend, 0);
   const criticalSpend = rows.filter(r => r.rating === 'Critical').reduce((s, r) => s + r.annual_spend, 0);
   const incompleteSpend = rows.filter(r => r.incomplete).reduce((s, r) => s + r.annual_spend, 0);
+  const totalSpendUsd = Math.round(spend), criticalSpendUsd = Math.round(criticalSpend), incompleteSpendUsd = Math.round(incompleteSpend);
   return {
     _scope: `${rows.length} suppliers`,
     weights_percent: w,
     summary: { suppliers: rows.length, scored: scored.length, incomplete: rows.length - scored.length,
-               total_annual_spend_usd: Math.round(spend),
-               critical_total_spend_usd: Math.round(criticalSpend),
-               incomplete_total_spend_usd: Math.round(incompleteSpend),
+               total_annual_spend_usd: totalSpendUsd, total_annual_spend_display: fmtMoney(totalSpendUsd),
+               critical_total_spend_usd: criticalSpendUsd, critical_total_spend_display: fmtMoney(criticalSpendUsd),
+               incomplete_total_spend_usd: incompleteSpendUsd, incomplete_total_spend_display: fmtMoney(incompleteSpendUsd),
                average_score: scored.length ? one(scored.reduce((s, r) => s + r.overall, 0) / scored.length) : null,
                preferred: scored.filter(r => r.rating === 'Preferred').length, acceptable: scored.filter(r => r.rating === 'Acceptable').length,
                watch: scored.filter(r => r.rating === 'Watch').length, critical: scored.filter(r => r.rating === 'Critical').length },
     requiring_attention_by_spend: scored.filter(r => r.rating === 'Watch' || r.rating === 'Critical').sort((a, b) => b.annual_spend - a.annual_spend).slice(0, 10).map(item),
     top_rated: scored.slice(0, 3).map(item),
-    incomplete_suppliers: rows.filter(r => r.incomplete).map(r => ({ supplier: r.supplier, annual_spend_usd: Math.round(r.annual_spend), missing_fields: r.missingFields })),
+    incomplete_suppliers: rows.filter(r => r.incomplete).map(r => { const spendUsd = Math.round(r.annual_spend);
+      return { supplier: r.supplier, annual_spend_usd: spendUsd, annual_spend_display: fmtMoney(spendUsd), missing_fields: r.missingFields }; }),
   };
 });
 
@@ -1779,17 +1785,23 @@ AI.wire('freight', () => {
   if (!state.rows.length) return null;
   const rows = state.rows, flagged = rows.filter(isFlagged);
   const spend = rows.reduce((s, r) => s + (r.freight_cost ?? 0), 0), excess = rows.reduce((s, r) => s + r.excess, 0);
-  const item = r => ({ shipment_id: r.shipment_id, lane: r.lane, carrier: r.carrier, status: r.status, freight_cost_usd: r.freight_cost === null ? null : Math.round(r.freight_cost),
-                       cost_per_mile_usd: r.cpm === null ? null : +r.cpm.toFixed(2), lane_avg_cost_per_mile_usd: r.lane_avg === null ? null : +r.lane_avg.toFixed(2),
-                       variance_percent: r.variance === null ? null : Math.round(r.variance * 100), late_days: r.late_days, estimated_excess_usd: Math.round(r.excess) });
+  const usdOrNull = n => n === null ? null : fmtMoney(n);
+  const item = r => { const freightCost = r.freight_cost === null ? null : Math.round(r.freight_cost), excessUsd = Math.round(r.excess);
+    return { shipment_id: r.shipment_id, lane: r.lane, carrier: r.carrier, status: r.status,
+             freight_cost_usd: freightCost, freight_cost_display: usdOrNull(freightCost),
+             cost_per_mile_usd: r.cpm === null ? null : +r.cpm.toFixed(2), lane_avg_cost_per_mile_usd: r.lane_avg === null ? null : +r.lane_avg.toFixed(2),
+             variance_percent: r.variance === null ? null : Math.round(r.variance * 100), late_days: r.late_days,
+             estimated_excess_usd: excessUsd, estimated_excess_display: fmtMoney(excessUsd) }; };
   const group = key => { const m = {}; for (const r of flagged) { const g = m[r[key]] ??= { [key]: r[key], flagged: 0, late: 0, high_cost: 0, estimated_excess_usd: 0 };
     g.flagged++; if (r.late_days > 0) g.late++; if (r.status === 'High Cost' || r.status === 'Critical') g.high_cost++; g.estimated_excess_usd += Math.round(r.excess); }
-    return Object.values(m).sort((a, b) => b.estimated_excess_usd - a.estimated_excess_usd || b.flagged - a.flagged); };
+    return Object.values(m).map(g => ({ ...g, estimated_excess_display: fmtMoney(g.estimated_excess_usd) })).sort((a, b) => b.estimated_excess_usd - a.estimated_excess_usd || b.flagged - a.flagged); };
+  const totalFreight = Math.round(spend), estimatedExcess = Math.round(excess);
   return {
     _scope: `${rows.length} shipments`,
-    summary: { shipments: rows.length, total_freight_usd: Math.round(spend), flagged: flagged.length, critical: rows.filter(r => r.status === 'Critical').length,
+    summary: { shipments: rows.length, total_freight_usd: totalFreight, total_freight_display: fmtMoney(totalFreight), flagged: flagged.length, critical: rows.filter(r => r.status === 'Critical').length,
                high_cost: rows.filter(r => r.status === 'High Cost').length, late: rows.filter(r => r.status === 'Late').length,
-               estimated_excess_usd: Math.round(excess), excess_percent_of_freight: spend ? +(excess / spend * 100).toFixed(1) : null },
+               estimated_excess_usd: estimatedExcess, estimated_excess_display: fmtMoney(estimatedExcess),
+               excess_percent_of_freight: spend ? +(excess / spend * 100).toFixed(1) : null },
     top_exceptions_by_excess: [...flagged].sort((a, b) => b.excess - a.excess || (b.late_days ?? 0) - (a.late_days ?? 0)).slice(0, 10).map(item),
     flagged_by_carrier: group('carrier'),
     flagged_by_lane: group('lane').slice(0, 6),
