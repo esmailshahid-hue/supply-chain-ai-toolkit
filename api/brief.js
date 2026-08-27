@@ -6,6 +6,10 @@
  * short brief. The model is told not to calculate anything and is only given the
  * numbers the app computed. The API key lives here, never in the page.
  *
+ * Calls DeepSeek's chat completions API. Set DEEPSEEK_API_KEY (preferred) in the
+ * server environment to enable this endpoint; DEEP_SEEK_API_KEY is also accepted
+ * for backward compatibility. Optionally set BRIEF_MODEL to override the model.
+ *
  * Runs as a Vercel serverless function (zero config) and is also used by server.js
  * for local development. No dependencies.
  *
@@ -14,7 +18,7 @@
  */
 
 const API_URL = process.env.BRIEF_API_URL || 'https://api.deepseek.com/chat/completions';
-const MODEL = process.env.BRIEF_MODEL || 'deepseek-chat';
+const MODEL = process.env.BRIEF_MODEL || 'deepseek-v4-flash';
 const MAX_BODY = 30_000; // bytes — the payloads the app sends are ~2–8 KB
 const TOOLS = {
   inventory: 'Inventory Planner. Focus on stockout risk (Critical), reorder needs and overstock (cash tied up).',
@@ -54,7 +58,8 @@ function send(res, status, obj) {
 }
 
 module.exports = async function handler(req, res) {
-  const key = process.env.DEEP_SEEK_API_KEY || process.env.DEEPSEEK_API_KEY;
+  // DEEPSEEK_API_KEY is the preferred name; DEEP_SEEK_API_KEY is accepted for backward compatibility.
+  const key = process.env.DEEPSEEK_API_KEY || process.env.DEEP_SEEK_API_KEY;
 
   if (req.method === 'GET') return send(res, 200, { enabled: Boolean(key) });
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
@@ -76,6 +81,7 @@ module.exports = async function handler(req, res) {
         max_tokens: 400,
         temperature: 0.2,
         stream: false,
+        thinking: { type: 'disabled' },
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: `Tool: ${TOOLS[tool]}\n\nCalculated results (JSON):\n${json}` },
