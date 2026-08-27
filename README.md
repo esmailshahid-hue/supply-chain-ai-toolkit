@@ -3,7 +3,7 @@
 **Live Demo:** https://esmail-supply-chain-ai-toolkit-blond.vercel.app/
 **Source Code:** https://github.com/esmailshahid-hue/supply-chain-ai-toolkit
 
-Browser-based tools for inventory planning, freight exceptions and supplier performance. One HTML file, no build step, no database. CSV parsing and all calculations happen in the browser. The only optional server piece is a single function (`api/brief.js`) that turns the calculated results into a short AI-generated Action Summary — raw uploaded CSVs are never sent to it, only the structured numbers the page has already computed, and only when you click **Generate Action Summary**.
+Supply chain analytics for inventory planning, freight exceptions and supplier performance, with AI-generated action summaries. CSV parsing and deterministic calculations run locally in the browser; only calculated results are sent when an Action Summary is requested. One HTML file, no build step, no database. The only optional server piece is a single function (`api/brief.js`) that turns the calculated results into a short AI-generated Action Summary — raw uploaded CSVs are never sent to it, only the structured numbers the page has already computed, and only when you click **Generate Action Summary**.
 
 ## Uploading data
 
